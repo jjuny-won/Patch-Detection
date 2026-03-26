@@ -1,0 +1,410 @@
+package com.example.patch_detection_camera.ui;
+
+import android.Manifest;
+import android.content.ContentValues;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.RectF;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraControl;
+import androidx.camera.core.CameraInfo;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.FocusMeteringAction;
+import androidx.camera.core.FocusMeteringResult;
+import androidx.camera.core.ImageCapture;
+import androidx.camera.core.MeteringPoint;
+import androidx.camera.core.MeteringPointFactory;
+import androidx.camera.core.Preview;
+import androidx.camera.core.ZoomState;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.example.patch_detection_camera.databinding.ActivityCameraBinding;
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * CameraActivity (완성본)
+ * - PreviewView 위에 RoiOverlayView(원 가이드)가 올라가 있다고 가정
+ * - Pinch Zoom + Tap Focus 지원
+ * - 촬영 직전 중앙 AF/AE 재시도 + 400ms 대기 후 촬영
+ * - 촬영 결과는 "AdjustRoiActivity"로 넘겨서 사용자가 ROI에 맞게 이미지 이동/확대 후 crop 하도록 유도
+ *
+ * 필요:
+ * 1) AdjustRoiActivity 추가(촬영/갤러리 공통)
+ * 2) activity_camera.xml 에 RoiOverlayView overlay 유지
+ */
+public class CameraActivity extends AppCompatActivity {
+    private boolean isReferenceMode = false;
+    private String mode = null;
+
+    private ActivityResultLauncher<Intent> previewLauncher;
+
+    private static final String TAG = "CameraXApp";
+    private static final String FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
+    private static final int REQUEST_CODE_PERMISSIONS = 10;
+
+    private static final float DEFAULT_ZOOM_RATIO = 2.5f;
+
+    private ActivityCameraBinding viewBinding;
+
+    private androidx.camera.core.Camera camera;
+    private ImageCapture imageCapture;
+
+    private ExecutorService cameraExecutor;
+
+    // Pinch zoom
+    private ScaleGestureDetector scaleGestureDetector;
+    private float currentZoomRatio = DEFAULT_ZOOM_RATIO;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        viewBinding = ActivityCameraBinding.inflate(getLayoutInflater());
+        setContentView(viewBinding.getRoot());
+
+        cameraExecutor = Executors.newSingleThreadExecutor();
+        mode = getIntent().getStringExtra("mode");
+        isReferenceMode = "REFERENCE".equals(mode);
+
+        previewLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    Intent data = result.getData();
+                    if (data == null) data = new Intent();
+
+                    setResult(result.getResultCode(), data);
+                    finish();
+                }
+        );
+        // Tap focus + pinch zoom 같이 처리
+        viewBinding.viewFinder.setClickable(true);
+        viewBinding.viewFinder.setFocusable(true);
+        viewBinding.viewFinder.setOnTouchListener((v, event) -> {
+
+            if (event.getPointerCount() == 1 && event.getAction() == MotionEvent.ACTION_UP) {
+                tapToFocus(event.getX(), event.getY());
+                return true;
+            }
+            return true;
+        });
+
+        viewBinding.imageCaptureButton.setOnClickListener(v -> takePhoto());
+
+        if (allPermissionsGranted()) {
+            startCamera();
+        } else {
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (allPermissionsGranted()) {
+                startCamera();
+            } else {
+                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        }
+    }
+
+    private void startCamera() {
+        ListenableFuture<ProcessCameraProvider> future = ProcessCameraProvider.getInstance(this);
+
+        future.addListener(() -> {
+            try {
+                ProcessCameraProvider provider = future.get();
+
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(viewBinding.viewFinder.getSurfaceProvider());
+
+                imageCapture = new ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        // 회전 안정성(ROI 흔들림 감소)
+                        .setTargetRotation(viewBinding.viewFinder.getDisplay().getRotation())
+                        .build();
+
+                provider.unbindAll();
+
+                camera = provider.bindToLifecycle(
+                        this,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        imageCapture
+                );
+
+                // view 레이아웃 잡힌 뒤 1회만 세팅
+                viewBinding.viewFinder.post(() -> {
+                    applyCameraDefaults("after bind/post");
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Use case binding failed", e);
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void applyCameraDefaults(String where) {
+        viewBinding.viewFinder.post(() -> {
+            setZoomRatioSafe(DEFAULT_ZOOM_RATIO);
+
+            lockAfAeToCenterOnce();
+            setExposureCompensation(0);
+
+            logZoomState(where);
+        });
+    }
+    private void takePhoto() {
+        if (imageCapture == null) return;
+        applyCameraDefaults("before capture");
+        viewBinding.viewFinder.postDelayed(this::reallyTakePhoto, 400);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (camera != null) {
+            applyCameraDefaults("onResume");
+        }
+    }
+
+    private void reallyTakePhoto() {
+        if (imageCapture == null) return;
+
+        String name = new SimpleDateFormat(FILENAME_FORMAT, Locale.US)
+                .format(System.currentTimeMillis());
+
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+        contentValues.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentValues.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES + "/patch_detection");
+        }
+
+        ImageCapture.OutputFileOptions outputOptions =
+                new ImageCapture.OutputFileOptions.Builder(
+                        getContentResolver(),
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        contentValues
+                ).build();
+
+        imageCapture.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(this),
+                new ImageCapture.OnImageSavedCallback() {
+
+                    @Override
+                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
+                        Uri savedUri = outputFileResults.getSavedUri();
+                        if (savedUri == null) {
+                            Toast.makeText(CameraActivity.this, "Saved URI is null", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        // ✅ ROI 값을 먼저 계산해서 intent에 넣고, startActivity는 딱 1번만
+                        viewBinding.viewFinder.post(() -> {
+
+                            RoiOverlayView overlay = viewBinding.roiOverlay;
+                            RectF roiRect = overlay.getRoiRectInView();
+
+                            float viewW = viewBinding.viewFinder.getWidth();
+                            float viewH = viewBinding.viewFinder.getHeight();
+
+                            // 정규화 (0~1)
+                            float cx = roiRect.centerX() / viewW;
+                            float cy = roiRect.centerY() / viewH;
+                            float rw = roiRect.width() / viewW;
+                            float rh = roiRect.height() / viewH;
+
+                            Intent previewIntent = new Intent(CameraActivity.this, PreviewActivity.class);
+                            previewIntent.putExtra("image_uri", savedUri.toString());
+                            previewIntent.putExtra("source", "camera");
+
+                            previewIntent.putExtra("roi_cx", cx);
+                            previewIntent.putExtra("roi_cy", cy);
+                            previewIntent.putExtra("roi_w", rw);
+                            previewIntent.putExtra("roi_h", rh);
+
+                            previewIntent.putExtra("zoom_ratio", currentZoomRatio);
+                            if (mode != null) previewIntent.putExtra("mode", mode);
+
+                            if (isReferenceMode) {
+                                previewLauncher.launch(previewIntent);
+                            } else {
+                                startActivity(previewIntent);            // 기존 플로우
+                            }
+                        });
+                    }
+
+
+                    @Override
+                    public void onError(@NonNull androidx.camera.core.ImageCaptureException exception) {
+                        Log.e(TAG, "Photo capture failed", exception);
+                        Toast.makeText(CameraActivity.this, "Capture failed", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
+
+    // -------------------- Focus / Zoom / Exposure --------------------
+
+    private void tapToFocus(float x, float y) {
+        if (camera == null) return;
+
+        CameraControl control = camera.getCameraControl();
+        MeteringPointFactory factory = viewBinding.viewFinder.getMeteringPointFactory();
+
+        MeteringPoint point = factory.createPoint(x, y);
+        FocusMeteringAction action = new FocusMeteringAction.Builder(
+                point,
+                FocusMeteringAction.FLAG_AF | FocusMeteringAction.FLAG_AE
+        )
+                .setAutoCancelDuration(2, TimeUnit.SECONDS)
+                .build();
+
+        Log.d(TAG, "tapToFocus request: x=" + x + ", y=" + y);
+
+        ListenableFuture<FocusMeteringResult> future = control.startFocusAndMetering(action);
+        future.addListener(() -> {
+            try {
+                FocusMeteringResult r = future.get();
+                Log.d(TAG, "tapToFocus DONE. success=" + r.isFocusSuccessful());
+            } catch (Exception e) {
+                Log.w(TAG, "tapToFocus FAILED", e);
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void lockAfAeToCenterOnce() {
+        if (camera == null) return;
+
+        CameraControl control = camera.getCameraControl();
+        MeteringPointFactory factory = viewBinding.viewFinder.getMeteringPointFactory();
+
+        float cx = viewBinding.viewFinder.getWidth() / 2f;
+        float cy = viewBinding.viewFinder.getHeight() / 2f;
+
+        MeteringPoint center;
+        if (cx <= 0 || cy <= 0) {
+            center = factory.createPoint(0.5f, 0.5f);
+            Log.d(TAG, "FocusMetering fallback (0.5,0.5)");
+        } else {
+            center = factory.createPoint(cx, cy);
+            Log.d(TAG, "FocusMetering center px=(" + cx + "," + cy + ")");
+        }
+
+        FocusMeteringAction action = new FocusMeteringAction.Builder(
+                center,
+                FocusMeteringAction.FLAG_AF | FocusMeteringAction.FLAG_AE
+        )
+                .setAutoCancelDuration(2, TimeUnit.SECONDS)
+                .build();
+
+        control.startFocusAndMetering(action);
+    }
+
+    private void setZoomRatioSafe(float zoomRatio) {
+        if (camera == null) return;
+
+        CameraControl control = camera.getCameraControl();
+        ZoomState zs = camera.getCameraInfo().getZoomState().getValue();
+
+        float clamped = zoomRatio;
+        if (zs != null) {
+            clamped = Math.max(zs.getMinZoomRatio(), Math.min(zs.getMaxZoomRatio(), zoomRatio));
+        }
+
+        control.setZoomRatio(clamped);
+        currentZoomRatio = clamped; // pinch zoom 기준값 갱신
+
+        if (zs != null) {
+            Log.d(TAG, "Zoom set: " + clamped + " (min=" + zs.getMinZoomRatio() + ", max=" + zs.getMaxZoomRatio() + ")");
+        } else {
+            Log.d(TAG, "Zoom set: " + clamped + " (zoomState=null)");
+        }
+    }
+
+    private void setExposureCompensation(int index) {
+        if (camera == null) return;
+
+        CameraInfo info = camera.getCameraInfo();
+        if (!info.getExposureState().isExposureCompensationSupported()) return;
+
+        int min = info.getExposureState().getExposureCompensationRange().getLower();
+        int max = info.getExposureState().getExposureCompensationRange().getUpper();
+
+        int clamped = Math.max(min, Math.min(max, index));
+        camera.getCameraControl().setExposureCompensationIndex(clamped);
+        Log.d(TAG, "ExposureCompensation=" + clamped + " (range " + min + ".." + max + ")");
+    }
+
+    private void logZoomState(String where) {
+        if (camera == null) return;
+        ZoomState zs = camera.getCameraInfo().getZoomState().getValue();
+        if (zs == null) {
+            Log.d(TAG, where + " zoomState=null");
+            return;
+        }
+        Log.d(TAG, where + " zoom=" + zs.getZoomRatio()
+                + " min=" + zs.getMinZoomRatio()
+                + " max=" + zs.getMaxZoomRatio());
+    }
+
+    // -------------------- Permissions / lifecycle --------------------
+
+    private boolean allPermissionsGranted() {
+        for (String permission : REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(getBaseContext(), permission)
+                    != PackageManager.PERMISSION_GRANTED) return false;
+        }
+        return true;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (cameraExecutor != null) cameraExecutor.shutdown();
+    }
+
+    private static final String[] REQUIRED_PERMISSIONS = buildRequiredPermissions();
+
+    private static String[] buildRequiredPermissions() {
+        List<String> perms = new ArrayList<>();
+        perms.add(Manifest.permission.CAMERA);
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        }
+        return perms.toArray(new String[0]);
+    }
+}

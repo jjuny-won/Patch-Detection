@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Heart outline -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:fillColor="@android:color/transparent"
+        android:pathData="
+        M100,160
+        C40,110 30,70 60,50
+        C80,35 100,50 100,50
+        C100,50 120,35 140,50
+        C170,70 160,110 100,160" />
+
+    <!-- ECG line -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:fillColor="@android:color/transparent"
+        android:pathData="
+        M30,100
+        L60,100
+        L75,80
+        L90,120
+        L110,70
+        L130,110
+        L160,100" />
+
+</vector>

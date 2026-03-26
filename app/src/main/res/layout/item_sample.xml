@@ -1,0 +1,26 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/tvSample"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:text="Gray - 0,0,0"
+        android:textSize="16sp"
+        android:textColor="#6C7F80"
+        android:layout_height="wrap_content"/>
+
+    <Button
+        android:id="@+id/btnDelete"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:text="Delete"
+        android:textAllCaps="false"
+        android:textColor="#6C7F80"
+        android:background="@drawable/bg_rounded_white_button"/>
+
+</LinearLayout>
