@@ -2,9 +2,14 @@ package com.example.patch_detection_camera.ui;
 
 import android.Manifest;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.RectF;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -78,6 +83,25 @@ public class CameraActivity extends AppCompatActivity {
     private ScaleGestureDetector scaleGestureDetector;
     private float currentZoomRatio = DEFAULT_ZOOM_RATIO;
 
+    // 수평 가이드라인 (가속도계)
+    private SensorManager sensorManager;
+    private Sensor rotationVectorSensor;
+    private final float[] rotationMatrix = new float[9];
+    private final float[] orientationAngles = new float[3];
+
+    private final SensorEventListener levelListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            // rotation vector → 회전 행렬 → orientation(방위각, 피치, 롤)
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+            SensorManager.getOrientation(rotationMatrix, orientationAngles);
+
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,6 +112,10 @@ public class CameraActivity extends AppCompatActivity {
         cameraExecutor = Executors.newSingleThreadExecutor();
         mode = getIntent().getStringExtra("mode");
         isReferenceMode = "REFERENCE".equals(mode);
+
+        // 수평 센서 초기화
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 
         previewLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -196,6 +224,22 @@ public class CameraActivity extends AppCompatActivity {
         if (camera != null) {
             applyCameraDefaults("onResume");
         }
+
+        // 센서 등록 (배터리 절약: GAME 속도 사용 - UI보다 빠르고 FASTEST보다 절약)
+        if (rotationVectorSensor != null) {
+            sensorManager.registerListener(
+                    levelListener,
+                    rotationVectorSensor,
+                    SensorManager.SENSOR_DELAY_GAME
+            );
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 백그라운드 시 센서 해제 (배터리 절약)
+        sensorManager.unregisterListener(levelListener);
     }
 
     private void reallyTakePhoto() {
