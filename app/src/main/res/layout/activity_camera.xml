@@ -33,6 +33,15 @@
         android:clickable="false"
         android:focusable="false" />
 
+    <!-- 촬영 각도 기준선 오버레이 -->
+    <!-- 스트립 양옆 파란 세로선: 밴드의 선과 일치시켜 일정 각도 유지 -->
+    <com.example.patch_detection_camera.ui.AngleGuideOverlayView
+        android:id="@+id/angleGuideOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false" />
+
     <ImageView
         android:id="@+id/galleryImageView"
         android:layout_width="match_parent"
