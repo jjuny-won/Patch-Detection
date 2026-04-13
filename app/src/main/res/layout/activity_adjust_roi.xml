@@ -61,6 +61,12 @@
                 android:id="@+id/overlay"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
+
+            <com.example.patch_detection_camera.ui.AngleGuideOverlayView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="false"
+                android:focusable="false" />
         </FrameLayout>
 
     </androidx.cardview.widget.CardView>
