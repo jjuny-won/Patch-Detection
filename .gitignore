@@ -12,3 +12,4 @@ app/build/
 
 # Test images (large files - keep locally only)
 app/src/main/assets/test/
+.claude/

@@ -265,7 +265,8 @@ public class PreviewActivity extends AppCompatActivity {
                 ColorCalibrator.Model model = null;
                 ColorCalibrator.EvalResult eval = null;
 
-                float[] refRgb15 = ReferenceStore.loadRgbReference(this);
+                float[] refRgb15 = ReferenceStore.loadActiveReferenceRgb(
+                        this);
 
                 if (rawRgb15 == null || rawRgb15.length < 12) {
                     Toast.makeText(this, "RGB 검출 실패", Toast.LENGTH_SHORT).show();

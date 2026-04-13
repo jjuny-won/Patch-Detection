@@ -12,20 +12,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-<!--    <TextView-->
-<!--        android:id="@+id/guideText"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:paddingHorizontal="18dp"-->
-<!--        android:paddingVertical="2dp"-->
-<!--        android:text="패치를 원에 맞춰서 촬영 해주세요"-->
-<!--        android:textStyle="bold"-->
-<!--        android:background="@android:color/darker_gray"-->
-<!--        android:alpha="0.85"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintBottom_toTopOf="@id/image_capture_button"/>-->
-
     <com.example.patch_detection_camera.ui.RoiOverlayView
         android:id="@+id/roiOverlay"
         android:layout_width="match_parent"
@@ -33,8 +19,6 @@
         android:clickable="false"
         android:focusable="false" />
 
-    <!-- 촬영 각도 기준선 오버레이 -->
-    <!-- 스트립 양옆 파란 세로선: 밴드의 선과 일치시켜 일정 각도 유지 -->
     <com.example.patch_detection_camera.ui.AngleGuideOverlayView
         android:id="@+id/angleGuideOverlay"
         android:layout_width="match_parent"
@@ -48,16 +32,23 @@
         android:layout_height="match_parent"
         android:scaleType="fitCenter"
         android:visibility="gone" />
-    <Button
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/image_capture_button"
         android:layout_width="110dp"
         android:layout_height="110dp"
         android:layout_marginBottom="50dp"
-        android:elevation="2dp"
         android:text="@string/take_photo"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        app:backgroundTint="#7B9BBF"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+        app:elevation="4dp"
+        app:rippleColor="#30FFFFFF"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

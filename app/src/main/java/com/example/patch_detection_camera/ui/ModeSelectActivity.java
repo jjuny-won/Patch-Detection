@@ -17,6 +17,7 @@ public class ModeSelectActivity extends AppCompatActivity {
     private Button btnCamera;
     private Button btnGallery;
     private Button btnReference;
+    private Button btnHistory;
 
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -29,12 +30,6 @@ public class ModeSelectActivity extends AppCompatActivity {
             });
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        updateButtons();
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mode_select);
@@ -42,6 +37,7 @@ public class ModeSelectActivity extends AppCompatActivity {
         btnCamera = findViewById(R.id.btnCamera);
         btnGallery = findViewById(R.id.btnGallery);
         btnReference = findViewById(R.id.btnReference);
+        btnHistory = findViewById(R.id.btnHistory);
 
         btnCamera.setOnClickListener(v ->
                 startActivity(new Intent(this, CameraActivity.class)));
@@ -52,17 +48,9 @@ public class ModeSelectActivity extends AppCompatActivity {
         btnReference.setOnClickListener(v ->
                 startActivity(new Intent(this, ReferenceCaptureActivity.class)));
 
-        updateButtons();
+        btnHistory.setOnClickListener(v ->
+                startActivity(new Intent(this, WoundMonitoringActivity.class)));
+
     }
 
-    private void updateButtons() {
-        boolean hasRef = ReferenceStore.hasReference(this);
-        btnCamera.setEnabled(hasRef);
-        btnGallery.setEnabled(hasRef);
-
-        // 시각적으로도 흐리게
-        float alpha = hasRef ? 1.0f : 0.4f;
-        btnCamera.setAlpha(alpha);
-        btnGallery.setAlpha(alpha);
-    }
 }

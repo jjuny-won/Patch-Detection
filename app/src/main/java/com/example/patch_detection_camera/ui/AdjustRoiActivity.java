@@ -22,8 +22,6 @@ public class AdjustRoiActivity extends AppCompatActivity {
     private ActivityAdjustRoiBinding vb;
 
     private Bitmap sourceNormalized;
-
-    // ✅ PreviewActivity 결과 받기
     private ActivityResultLauncher<Intent> previewLauncher;
 
     @Override
@@ -36,7 +34,6 @@ public class AdjustRoiActivity extends AppCompatActivity {
         if (uriStr == null) { finish(); return; }
         Uri uri = Uri.parse(uriStr);
 
-        // ✅ mode를 그대로 전달 (REFERENCE/일반)
         final String mode = getIntent().getStringExtra("mode");   // "REFERENCE" expected
         final String source = getIntent().getStringExtra("source"); // "gallery" 등
 
@@ -77,12 +74,11 @@ public class AdjustRoiActivity extends AppCompatActivity {
                 return;
             }
 
-            // ✅ PreviewActivity를 forResult로 띄움
+
             Intent intent = new Intent(this, PreviewActivity.class);
             intent.putExtra("image_uri", uriStr);
             if (source != null) intent.putExtra("source", source);
 
-            // ✅ 중요: PreviewActivity가 reference 저장 로직을 타도록 mode 전달
             if (mode != null) intent.putExtra("mode", mode); // "REFERENCE"
 
             // ROI 전달

@@ -1,6 +1,7 @@
 package com.example.patch_detection_camera.ui;
 
 import android.os.Bundle;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -9,6 +10,8 @@ import android.content.Intent;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.patch_detection_camera.R;
+
+import java.util.Date;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -36,6 +39,11 @@ public class ResultActivity extends AppCompatActivity {
 
         bindViews();
 
+        // 업데이트 시간 표시
+        TextView tvTime = findViewById(R.id.tvUpdatedTime);
+        String formatted = DateFormat.format("MMM dd, yyyy hh:mm a", new Date()).toString();
+        tvTime.setText("Updated " + formatted);
+
         String shapesJson   = getIntent().getStringExtra("shapes_json");
         String correctedJson = getIntent().getStringExtra("corrected_shapes_json");
 
@@ -50,6 +58,11 @@ public class ResultActivity extends AppCompatActivity {
             intent.putExtra("rgb15",       getIntent().getFloatArrayExtra("rgb15"));
             intent.putExtra("shapes_json", shapesJson);
             startActivity(intent);
+        });
+        findViewById(R.id.btnHome).setOnClickListener(v -> {
+            Intent it = new Intent(this, ModeSelectActivity.class);
+            it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(it);
         });
     }
 

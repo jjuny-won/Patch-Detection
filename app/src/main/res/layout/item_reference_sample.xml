@@ -2,33 +2,50 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="120dp"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp">
+    android:orientation="vertical"
+    android:background="@drawable/bg_white_card"
+    android:layout_marginBottom="12dp"
+    android:padding="14dp">
+
+    <!-- 헤더: Detected Value + Delete 버튼 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Detected Value"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#3A5050" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            android:layout_width="72dp"
+            android:layout_height="34dp"
+            android:text="Delete"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_delete_button" />
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D0DEDE"
+        android:layout_marginBottom="6dp"/>
 
     <TextView
         android:id="@+id/tvSample"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:text="Gray - 0,0,0&#10;Red - 0,0,0&#10;Green - 0,0,0&#10;Blue - 0,0,0&#10;White - 0,0,0"
-        android:textColor="#6C7F80"
-        android:textSize="16sp"
-        android:lineSpacingExtra="2dp"
+        android:textColor="#5A7070"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp"
         android:maxLines="5" />
-
-    <Button
-        android:id="@+id/btnDelete"
-        android:layout_width="96dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="12dp"
-        android:text="Delete"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/bg_delete_button" />
 
 </LinearLayout>

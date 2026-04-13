@@ -1,444 +1,383 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F6F4F8">
+    android:background="#D1DEDD">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
+    <!-- 파란 곡선 헤더 -->
+    <View
+        android:id="@+id/headerBg"
+        android:layout_width="0dp"
+        android:layout_height="100dp"
+        android:background="@drawable/bg_header_blue"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:text="Wound Status"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        app:layout_constraintTop_toTopOf="@id/headerBg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvUpdatedTime" />
 
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Result"
-            android:textSize="34sp"
-            android:textStyle="bold"
-            android:textColor="#000"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+    <TextView
+        android:id="@+id/tvUpdatedTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#DDEEFF"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintBottom_toBottomOf="@id/headerBg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ORIGINAL TITLE -->
-        <TextView
-            android:id="@+id/originalTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Original Result"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="#000"
-            app:layout_constraintTop_toBottomOf="@id/title"
-            app:layout_constraintStart_toStartOf="parent"/>
+    <!-- 스크롤 영역 -->
+    <ScrollView
+        android:id="@+id/scrollContent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBg"
+        app:layout_constraintBottom_toTopOf="@id/bottomBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ORIGINAL CARD -->
         <LinearLayout
-            android:id="@+id/resultCardOriginal"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_result_card"
             android:orientation="vertical"
-            android:padding="20dp"
-            app:layout_constraintTop_toBottomOf="@id/originalTitle"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            android:paddingBottom="8dp">
 
-            <!-- Rectangular -->
+            <!-- pH 행 (lavender) -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_rect"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_result_row_ph"
+                android:padding="18dp"
+                android:layout_marginBottom="10dp">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
                     <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="pH"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="#5B3FA0"/>
+                    <TextView
+                        android:id="@+id/tvPhValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Rectangular"
-                        android:textSize="18sp"
+                        android:text="--"
+                        android:textSize="22sp"
                         android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueRect"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
+                        android:textColor="#5B3FA0"/>
                 </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/phBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="22dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp">
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/gradient_ph_bar"/>
+                    <View
+                        android:id="@+id/phIndicator"
+                        android:layout_width="3dp"
+                        android:layout_height="match_parent"
+                        android:background="#FFFFFF"
+                        android:layout_gravity="center_horizontal"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvPhStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#5B3FA0"
+                    android:gravity="center"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Triangle -->
+            <!-- Temp 행 (peach) -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_triangle"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_result_row_temp"
+                android:padding="18dp"
+                android:layout_marginBottom="10dp">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
                     <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Temp"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="#C07030"/>
+                    <TextView
+                        android:id="@+id/tvTempValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Triangle"
-                        android:textSize="18sp"
+                        android:text="--"
+                        android:textSize="22sp"
                         android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueTriangle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
+                        android:textColor="#C07030"/>
                 </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/tempBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="22dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp">
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/gradient_temp_bar"/>
+                    <View
+                        android:id="@+id/tempIndicator"
+                        android:layout_width="3dp"
+                        android:layout_height="match_parent"
+                        android:background="#FFFFFF"
+                        android:layout_gravity="center_horizontal"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvTempStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#C07030"
+                    android:gravity="center"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Circle -->
+            <!-- Glucose 행 (white) -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_circle"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_result_row_glucose"
+                android:padding="18dp"
+                android:layout_marginBottom="10dp">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
                     <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Glucose"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="#2D5E3C"/>
+                    <TextView
+                        android:id="@+id/tvGlucoseValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Circle"
-                        android:textSize="18sp"
+                        android:text="--"
+                        android:textSize="22sp"
                         android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueCircle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
+                        android:textColor="#2D5E3C"/>
                 </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/glucoseBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="22dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp">
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/gradient_glucose_bar"/>
+                    <View
+                        android:id="@+id/glucoseIndicator"
+                        android:layout_width="3dp"
+                        android:layout_height="match_parent"
+                        android:background="#FFFFFF"
+                        android:layout_gravity="center_horizontal"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvGlucoseStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#2D5E3C"
+                    android:gravity="center"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Hexagon -->
+            <!-- Uric acid 행 (light blue) -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_polygon"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_result_row_uric"
+                android:padding="18dp"
+                android:layout_marginBottom="4dp">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
                     <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Uric acid"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="#3A5580"/>
+                    <TextView
+                        android:id="@+id/tvUricValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Hexagon"
-                        android:textSize="18sp"
+                        android:text="--"
+                        android:textSize="22sp"
                         android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueHexagon"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
+                        android:textColor="#3A5580"/>
                 </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/uricBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="22dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp">
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/gradient_uric_bar"/>
+                    <View
+                        android:id="@+id/uricIndicator"
+                        android:layout_width="3dp"
+                        android:layout_height="match_parent"
+                        android:background="#FFFFFF"
+                        android:layout_gravity="center_horizontal"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvUricStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#3A5580"
+                    android:gravity="center"/>
             </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-        <!-- CORRECTED TITLE -->
-        <TextView
-            android:id="@+id/correctedTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Corrected Result"
-            android:textSize="20sp"
+    <!-- 하단 버튼 -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMonitoring"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Monitor"
+            android:textAllCaps="false"
+            android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="#000"
-            app:layout_constraintTop_toBottomOf="@id/resultCardOriginal"
-            app:layout_constraintStart_toStartOf="parent"/>
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
 
-        <!-- CORRECTED CARD -->
-        <LinearLayout
-            android:id="@+id/resultCardCorrected"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDebug"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_result_card"
-            android:orientation="vertical"
-            android:padding="20dp"
-            app:layout_constraintTop_toBottomOf="@id/correctedTitle"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Debug"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
 
-            <!-- Rectangular -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_rect"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Rectangular"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueRectCorrected"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Triangle -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_triangle"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Triangle"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueTriangleCorrected"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Circle -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_circle"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Circle"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueCircleCorrected"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#6E8FBA"/>
-
-            <!-- Hexagon -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="70dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:background="@drawable/icon_polygon"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Hexagon"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-
-                    <TextView
-                        android:id="@+id/valueHexagonCorrected"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(0, 0, 0)"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#000"/>
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- BUTTONS -->
-        <LinearLayout
-            android:id="@+id/buttonRow"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHome"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:gravity="center"
-            android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/resultCardCorrected"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:text="Home"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
 
-            <Button
-                android:id="@+id/btnDebug"
-                android:layout_width="140dp"
-                android:layout_height="48dp"
-                android:text="디버깅"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_result_button"
-                android:textColor="#000"/>
+    </LinearLayout>
 
-            <Space
-                android:layout_width="30dp"
-                android:layout_height="1dp"/>
+    <!-- 기존 코드 호환용 숨김 뷰 (ResultActivity.java가 이 ID들을 참조) -->
+    <TextView android:id="@+id/valueCircle"           android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueCircleCorrected"  android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueRect"             android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueRectCorrected"    android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueTriangle"         android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueTriangleCorrected" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueHexagon"          android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
+    <TextView android:id="@+id/valueHexagonCorrected" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"/>
 
-            <Button
-                android:id="@+id/btnMonitoring"
-                android:layout_width="140dp"
-                android:layout_height="48dp"
-                android:text="모니터링"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_result_button"
-                android:textColor="#000"/>
-        </LinearLayout>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>

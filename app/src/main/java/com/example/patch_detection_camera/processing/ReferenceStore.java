@@ -1,373 +1,375 @@
 package com.example.patch_detection_camera.processing;
 
 import android.content.Context;
-import android.os.Environment;
+import android.content.SharedPreferences;
 import android.util.Log;
 
-import com.example.patch_detection_camera.processing.calibration.ColorCalibrator;
-
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.FileWriter;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class ReferenceStore {
+
     private static final String TAG = "ReferenceStore";
 
-    // reference file
-    private static final String DIR_NAME = "patch_detection";
-    private static final String FILE_NAME = "reference_rgb.json";
+    private static final String PREFS = "reference_store";
+    private static final String KEY_USING_TEST_DATA = "using_test_data";
 
-    private static final String RUN_DIR_NAME = "runs";
+    private static final String ASSET_REFERENCE_PATH = "debug/reference.json";
 
-    // ----------------------------
-    // Save reference (overwrite)
-    // ----------------------------
-    public static void saveRgbReference(Context ctx, float[] refRgb15, int sampleN, List<float[]> samples) {
-        if (refRgb15 == null || refRgb15.length <= 0) {
-            throw new IllegalArgumentException("refRgb15 is null/empty");
+    private static final String FILE_SAVED_REFERENCE = "saved_reference.json";
+    private static final String FILE_RUNS_REFERENCE = "runs_reference.json";
+    private static final String FILE_RUNS_SAVED = "runs_saved.json";
+
+    private ReferenceStore() { }
+
+    private static SharedPreferences prefs(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    public static void setUsingTestData(Context context, boolean using) {
+        prefs(context).edit().putBoolean(KEY_USING_TEST_DATA, using).apply();
+    }
+
+    public static boolean isUsingTestData(Context context) {
+        return prefs(context).getBoolean(KEY_USING_TEST_DATA, false);
+    }
+
+    public static String getActiveReferenceSource(Context context) {
+        if (isUsingTestData(context)) return "REFERENCE";
+        if (hasSavedReference(context)) return "SAVED";
+        return "REFERENCE";
+    }
+
+    public static float[] loadActiveReferenceRgb(Context context) {
+        if (isUsingTestData(context)) {
+            return loadReferenceRgb(context);
         }
 
-        try {
-            File f = getRefFile(ctx);
+        if (hasSavedReference(context)) {
+            return loadSavedRgbReference(context);
+        }
 
-            JSONObject root = new JSONObject();
-            root.put("version", 2);
-            root.put("len", refRgb15.length);
-            root.put("sample_n", sampleN);
-            root.put("saved_time_ms", System.currentTimeMillis());
+        return loadReferenceRgb(context);
+    }
 
-            JSONArray rgbArr = new JSONArray();
-            for (float v : refRgb15) rgbArr.put(Math.round(v));
-            root.put("rgb15", rgbArr);
+    public static File getSavedReferenceFile(Context context) {
+        return new File(context.getFilesDir(), FILE_SAVED_REFERENCE);
+    }
 
-            if (samples != null) {
-                JSONArray samplesArr = new JSONArray();
-                for (float[] s : samples) {
-                    if (s == null) continue;
-                    JSONArray one = new JSONArray();
-                    for (float v : s) one.put(Math.round(v));
-                    samplesArr.put(one);
-                }
-                root.put("samples", samplesArr);
-            }
+    public static File getRunsReferenceFile(Context context) {
+        return new File(context.getFilesDir(), FILE_RUNS_REFERENCE);
+    }
 
-            File parent = f.getParentFile();
-            if (parent != null && !parent.exists()) parent.mkdirs();
+    public static File getRunsSavedFile(Context context) {
+        return new File(context.getFilesDir(), FILE_RUNS_SAVED);
+    }
 
-            try (FileWriter w = new FileWriter(f, false)) {
-                w.write(root.toString());
-            }
+    public static boolean hasSavedReference(Context context) {
+        File file = getSavedReferenceFile(context);
+        return file.exists() && file.length() > 0;
+    }
 
-            // verify
-            float[] loaded = loadRgbReference(ctx);
-            if (loaded == null || loaded.length != refRgb15.length) {
-                throw new IllegalStateException("save verification failed (null/len mismatch)");
-            }
-            double maxAbs = maxAbsDiffRounded(refRgb15, loaded);
-            if (maxAbs > 1e-6) {
-                throw new IllegalStateException("save verification failed (diff=" + maxAbs + ")");
-            }
-
-            Log.d(TAG, "Saved ref to: " + f.getAbsolutePath()
-                    + " len=" + refRgb15.length + " n=" + sampleN);
-
-        } catch (Exception e) {
-            Log.e(TAG, "saveRgbReference error", e);
-            throw new RuntimeException(e);
+    public static void clearSavedReference(Context context) {
+        File file = getSavedReferenceFile(context);
+        if (file.exists()) {
+            boolean deleted = file.delete();
+            Log.d(TAG, "clearSavedReference deleted=" + deleted);
         }
     }
 
-    public static void saveRgbReference(Context ctx, float[] refRgb15, int sampleN) {
-        saveRgbReference(ctx, refRgb15, sampleN, null);
-    }
-
-    // ----------------------------
-    // Load reference
-    // ----------------------------
-    public static float[] loadRgbReference(Context ctx) {
+    public static JSONObject loadReferenceJson(Context context) {
         try {
-            File f = getRefFile(ctx);
-            if (!f.exists()) return null;
-
-            String json = readAll(f);
-            JSONObject root = new JSONObject(json);
-
-            JSONArray arr = root.optJSONArray("rgb15");
-            if (arr == null) arr = root.optJSONArray("data"); // old compat
-
-            int len = root.optInt("len", -1);
-            if (arr == null) return null;
-            if (len <= 0) len = arr.length();
-            if (arr.length() != len) return null;
-
-            float[] out = new float[len];
-            for (int i = 0; i < len; i++) out[i] = (float) arr.getDouble(i);
-            return out;
-
+            String json = readAssetText(context, ASSET_REFERENCE_PATH);
+            if (json == null || json.trim().isEmpty()) return null;
+            return new JSONObject(json);
         } catch (Exception e) {
-            Log.e(TAG, "loadRgbReference error", e);
+            Log.e(TAG, "loadReferenceJson failed", e);
             return null;
         }
     }
 
-    public static boolean hasReference(Context ctx) {
-        File f = getRefFile(ctx);
-        return f.exists() && f.length() > 0;
-    }
-
-    public static JSONObject loadMeta(Context ctx) {
+    public static JSONObject loadSavedReferenceJson(Context context) {
         try {
-            File f = getRefFile(ctx);
-            if (!f.exists()) return null;
-            return new JSONObject(readAll(f));
+            File file = getSavedReferenceFile(context);
+            if (!file.exists()) return null;
+
+            String json = readFileText(file);
+            if (json == null || json.trim().isEmpty()) return null;
+            return new JSONObject(json);
         } catch (Exception e) {
+            Log.e(TAG, "loadSavedReferenceJson failed", e);
             return null;
         }
     }
 
-    public static void clearSavedReference(Context ctx) {
+    public static float[] loadReferenceRgb(Context context) {
         try {
-            File f = getRefFile(ctx);
-            if (f.exists()) {
-                boolean ok = f.delete();
-                Log.d(TAG, "clearSavedReference: " + ok);
+            JSONObject obj = loadReferenceJson(context);
+            if (obj == null) return null;
+
+            if (obj.has("rgb15")) {
+                return jsonArrayToFloatArray(obj.getJSONArray("rgb15"));
             }
+            if (obj.has("median_rgb15")) {
+                return jsonArrayToFloatArray(obj.getJSONArray("median_rgb15"));
+            }
+            return null;
         } catch (Exception e) {
-            Log.e(TAG, "clearSavedReference error", e);
-        }
-    }
-
-    public static String getReferencePath(Context ctx) {
-        return getRefFile(ctx).getAbsolutePath();
-    }
-
-    // ----------------------------
-    // Append samples + recompute median
-    // ----------------------------
-    public static void appendAndUpdateReference(Context ctx, List<float[]> newSamples) {
-        try {
-            List<float[]> allSamples = new ArrayList<>();
-
-            // 기존 samples 불러오기
-            JSONObject old = loadMeta(ctx);
-            if (old != null) {
-                JSONArray oldSamples = old.optJSONArray("samples");
-                if (oldSamples != null) {
-                    for (int i = 0; i < oldSamples.length(); i++) {
-                        JSONArray one = oldSamples.getJSONArray(i);
-                        float[] s = new float[one.length()];
-                        for (int k = 0; k < one.length(); k++) {
-                            s[k] = (float) one.getDouble(k);
-                        }
-                        allSamples.add(s);
-                    }
-                }
-            }
-
-            // 새 samples 추가
-            if (newSamples != null) {
-                for (float[] s : newSamples) {
-                    if (s != null) allSamples.add(s.clone());
-                }
-            }
-
-            if (allSamples.isEmpty()) return;
-
-            float[] newMedian = computeMedianRgb15(allSamples);
-            saveRgbReference(ctx, newMedian, allSamples.size(), allSamples);
-
-            Log.d(TAG, "Reference updated. Total samples=" + allSamples.size());
-
-        } catch (Exception e) {
-            Log.e(TAG, "appendAndUpdateReference error", e);
-        }
-    }
-
-    // ----------------------------
-    // ✅ Runs 저장/로드 (shape consistency용)
-    // ----------------------------
-
-    /** 한 번 실행 결과(run) 저장: marker + shapes_json + timestamp */
-    public static void saveRun(Context ctx, float[] markerRgb, String shapesJsonStr) {
-        try {
-            File dir = getRunDir(ctx);
-            if (!dir.exists()) dir.mkdirs();
-
-            long t = System.currentTimeMillis();
-            File f = new File(dir, "run_" + t + ".json");
-
-            JSONObject root = new JSONObject();
-            root.put("time_ms", t);
-
-            if (markerRgb != null) {
-                JSONArray m = new JSONArray();
-                for (float v : markerRgb) m.put(Math.round(v));
-                root.put("rgb15", m);
-            }
-
-            // shapesJsonStr은 이미 JSONArray string 이니까 그대로 저장
-            // (예: "[{type:..}, ...]")
-            root.put("shapes_json", shapesJsonStr != null ? shapesJsonStr : "[]");
-
-            try (FileWriter w = new FileWriter(f, false)) {
-                w.write(root.toString());
-            }
-
-            Log.d(TAG, "Saved run: " + f.getAbsolutePath());
-        } catch (Exception e) {
-            Log.e(TAG, "saveRun error", e);
-        }
-    }
-
-    /** 저장된 run 파일 목록 */
-    public static List<File> listRuns(Context ctx) {
-        List<File> out = new ArrayList<>();
-        File dir = getRunDir(ctx);
-        if (!dir.exists()) return out;
-
-        File[] files = dir.listFiles((d, name) -> name != null && name.startsWith("run_") && name.endsWith(".json"));
-        if (files == null) return out;
-
-        // 최신순 정렬(간단)
-        java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
-        for (File f : files) out.add(f);
-        return out;
-    }
-
-    public static JSONObject loadRunJson(File f) {
-        try {
-            return new JSONObject(readAll(f));
-        } catch (Exception e) {
+            Log.e(TAG, "loadReferenceRgb failed", e);
             return null;
         }
     }
 
-    // ----------------------------
-    // Median helper
-    // ----------------------------
-    public static float[] computeMedianRgb15(List<float[]> samples) {
-        if (samples == null || samples.isEmpty()) return null;
+    public static float[] loadSavedRgbReference(Context context) {
+        try {
+            JSONObject obj = loadSavedReferenceJson(context);
+            if (obj == null) return null;
 
-        int L = samples.get(0).length;
-        for (float[] s : samples) {
-            if (s == null || s.length != L) {
-                throw new IllegalArgumentException("Sample length mismatch");
+            if (obj.has("rgb15")) {
+                return jsonArrayToFloatArray(obj.getJSONArray("rgb15"));
             }
+            if (obj.has("median_rgb15")) {
+                return jsonArrayToFloatArray(obj.getJSONArray("median_rgb15"));
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "loadSavedRgbReference failed", e);
+            return null;
         }
+    }
 
-        float[] out = new float[L];
-        float[] tmp = new float[samples.size()];
-
-        for (int i = 0; i < L; i++) {
-            for (int k = 0; k < samples.size(); k++) tmp[k] = samples.get(k)[i];
-            java.util.Arrays.sort(tmp);
-            int mid = tmp.length / 2;
-            out[i] = (tmp.length % 2 == 1) ? tmp[mid] : (tmp[mid - 1] + tmp[mid]) / 2f;
+    public static List<float[]> loadSavedRgbSamples(Context context) {
+        try {
+            JSONObject obj = loadSavedReferenceJson(context);
+            if (obj == null || !obj.has("samples")) {
+                return new ArrayList<>();
+            }
+            return jsonToFloat2dList(obj.getJSONArray("samples"));
+        } catch (Exception e) {
+            Log.e(TAG, "loadSavedRgbSamples failed", e);
+            return new ArrayList<>();
         }
-        return out;
     }
 
-    // ----------------------------
-    // File path utils
-    // ----------------------------
-    private static File getRefFile(Context ctx) {
-        File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File dir = new File(base, DIR_NAME);
-        if (!dir.exists()) dir.mkdirs();
-        return new File(dir, FILE_NAME);
-    }
+    public static void saveSavedReference(Context context, float[] medianRgb15, int sampleCount, List<float[]> samples) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("version", 1);
+            obj.put("source", "SAVED");
+            obj.put("sample_n", sampleCount);
+            obj.put("saved_time_ms", nowMs());
+            obj.put("saved_time_iso", nowIso());
+            obj.put("rgb15", new JSONArray(floatArrayToList(medianRgb15)));
+            obj.put("samples", float2dListToJsonArray(samples));
 
-    private static File getRunDir(Context ctx) {
-        File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File dir = new File(new File(base, DIR_NAME), RUN_DIR_NAME);
-        return dir;
-    }
-
-    private static String readAll(File f) throws Exception {
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
+            writeText(getSavedReferenceFile(context), obj.toString(2));
+        } catch (Exception e) {
+            Log.e(TAG, "saveSavedReference failed", e);
         }
-        return sb.toString();
     }
-
-    private static double maxAbsDiffRounded(float[] a, float[] b) {
-        int n = Math.min(a.length, b.length);
-        double m = 0.0;
-        for (int i = 0; i < n; i++) {
-            double aa = Math.round(a[i]);
-            double bb = b[i];
-            m = Math.max(m, Math.abs(aa - bb));
-        }
-        return m;
-    }
-
-    private static final String RUN_FILE = "runs.json";
 
     public static void saveRun(
-            Context ctx,
-            float[] curMarker,
-            ColorCalibrator.EvalResult eval,
-            boolean markerOk,
-            String shapesRawJson,
-            JSONArray shapesCorrected
+            Context context,
+            float[] correctedRgb,
+            Object evalResult,
+            boolean calibrationApplied,
+            String imageUri,
+            JSONArray shapesJson
     ) {
         try {
-
-            File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File dir = new File(base, DIR_NAME);
-            if (!dir.exists()) dir.mkdirs();
-
-            File f = new File(dir, RUN_FILE);
-
-            JSONArray root;
-
-            if (f.exists()) {
-                BufferedReader br = new BufferedReader(new FileReader(f));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-                br.close();
-                root = new JSONArray(sb.toString());
-            } else {
-                root = new JSONArray();
-            }
+            String source = getActiveReferenceSource(context);
+            float[] refRgb = loadActiveReferenceRgb(context);
 
             JSONObject run = new JSONObject();
-            run.put("timestamp", System.currentTimeMillis());
-            run.put("markerImproved", markerOk);
+            run.put("version", 1);
+            run.put("source", source);
+            run.put("timestamp_ms", nowMs());
+            run.put("timestamp_iso", nowIso());
+            run.put("calibration_applied", calibrationApplied);
+            run.put("image_uri", imageUri == null ? "" : imageUri);
 
-            if (eval != null) {
-                run.put("markerBeforeMedian", eval.beforeDeltaEMedian);
-                run.put("markerAfterMedian", eval.afterDeltaEMedian);
+            if (refRgb != null) {
+                run.put("reference_rgb15", new JSONArray(floatArrayToList(refRgb)));
+            } else {
+                run.put("reference_rgb15", JSONObject.NULL);
             }
 
-            run.put("shapesRaw", new JSONArray(shapesRawJson));
-            run.put("shapesCorrected", shapesCorrected);
+            if (correctedRgb != null) {
+                run.put("corrected_rgb15", new JSONArray(floatArrayToList(correctedRgb)));
+            } else {
+                run.put("corrected_rgb15", JSONObject.NULL);
+            }
 
-            root.put(run);
+            if (evalResult != null) {
+                run.put("eval_result", String.valueOf(evalResult));
+            } else {
+                run.put("eval_result", JSONObject.NULL);
+            }
 
-            FileWriter w = new FileWriter(f, false);
-            w.write(root.toString());
-            w.close();
+            if (shapesJson != null) {
+                run.put("shapes", shapesJson);
+            } else {
+                run.put("shapes", new JSONArray());
+            }
 
+            if ("SAVED".equals(source)) {
+                appendJsonObjectToArrayFile(getRunsSavedFile(context), run);
+            } else {
+                appendJsonObjectToArrayFile(getRunsReferenceFile(context), run);
+            }
         } catch (Exception e) {
-            Log.e(TAG, "saveRun error", e);
+            Log.e(TAG, "saveRun failed", e);
         }
     }
 
-    // ReferenceStore.java 안에 추가
-    public static File getRunsFile(Context ctx) {
-        File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File dir = new File(base, "patch_detection");
-        if (!dir.exists()) dir.mkdirs();
-        return new File(dir, "runs.json");
+    public static float[] computeMedianRgb15(List<float[]> rgbList) {
+        if (rgbList == null || rgbList.isEmpty()) return null;
+
+        float[] out = new float[15];
+
+        for (int i = 0; i < 15; i++) {
+            List<Float> vals = new ArrayList<>();
+
+            for (float[] row : rgbList) {
+                if (row != null && row.length > i) {
+                    vals.add(row[i]);
+                }
+            }
+
+            if (vals.isEmpty()) {
+                out[i] = 0f;
+                continue;
+            }
+
+            Collections.sort(vals);
+            int n = vals.size();
+            if (n % 2 == 1) {
+                out[i] = vals.get(n / 2);
+            } else {
+                out[i] = (vals.get(n / 2 - 1) + vals.get(n / 2)) / 2f;
+            }
+        }
+
+        return out;
+    }
+
+    private static void appendJsonObjectToArrayFile(File file, JSONObject obj) throws Exception {
+        JSONArray arr;
+
+        if (file.exists()) {
+            String text = readFileText(file);
+            arr = (text == null || text.trim().isEmpty()) ? new JSONArray() : new JSONArray(text);
+        } else {
+            arr = new JSONArray();
+        }
+
+        arr.put(obj);
+        writeText(file, arr.toString(2));
+    }
+
+    private static long nowMs() {
+        return System.currentTimeMillis();
+    }
+
+    private static String nowIso() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.KOREA);
+        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        return sdf.format(new Date());
+    }
+
+    private static String readAssetText(Context context, String assetName) throws Exception {
+        try (InputStream is = context.getAssets().open(assetName);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+            return bos.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    private static String readFileText(File file) throws Exception {
+        try (FileInputStream fis = new FileInputStream(file);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = fis.read(buffer)) != -1) {
+                bos.write(buffer, 0, len);
+            }
+            return bos.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    private static void writeText(File file, String text) throws Exception {
+        try (FileWriter fw = new FileWriter(file, false)) {
+            fw.write(text);
+            fw.flush();
+        }
+    }
+
+    private static float[] jsonArrayToFloatArray(JSONArray ja) throws Exception {
+        if (ja == null) return null;
+        float[] out = new float[ja.length()];
+        for (int i = 0; i < ja.length(); i++) {
+            out[i] = (float) ja.getDouble(i);
+        }
+        return out;
+    }
+
+    private static List<float[]> jsonToFloat2dList(JSONArray outer) throws Exception {
+        List<float[]> out = new ArrayList<>();
+        if (outer == null) return out;
+
+        for (int i = 0; i < outer.length(); i++) {
+            JSONArray inner = outer.getJSONArray(i);
+            float[] row = new float[inner.length()];
+            for (int j = 0; j < inner.length(); j++) {
+                row[j] = (float) inner.getDouble(j);
+            }
+            out.add(row);
+        }
+        return out;
+    }
+
+    private static JSONArray float2dListToJsonArray(List<float[]> list) throws JSONException {
+        JSONArray outer = new JSONArray();
+        if (list == null) return outer;
+
+        for (float[] row : list) {
+            JSONArray inner = new JSONArray();
+            if (row != null) {
+                for (float v : row) {
+                    inner.put(v);
+                }
+            }
+            outer.put(inner);
+        }
+        return outer;
+    }
+
+    private static List<Float> floatArrayToList(float[] arr) {
+        List<Float> out = new ArrayList<>();
+        if (arr != null) {
+            for (float v : arr) out.add(v);
+        }
+        return out;
     }
 }

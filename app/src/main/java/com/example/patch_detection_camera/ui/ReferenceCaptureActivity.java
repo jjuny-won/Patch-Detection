@@ -6,6 +6,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.switchmaterial.SwitchMaterial;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,7 +24,10 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
 
     private TextView tvGray, tvRed, tvGreen, tvBlue, tvWhite;
     private Button btnStart, btnReset, btnList, btnSelectGallery;
+    private Button btnMonitor, btnHome;
+    private SwitchMaterial switchTestData;
 
+    // detected_data
     private final ArrayList<ReferenceSample> samples = new ArrayList<>();
 
     private ActivityResultLauncher<Intent> cameraLauncher;
@@ -64,11 +69,14 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
         btnReset = findViewById(R.id.btnReset);
         btnList = findViewById(R.id.btnList);
         btnSelectGallery = findViewById(R.id.btnSelectGallery);
+        btnMonitor = findViewById(R.id.btnMonitor);
+        btnHome = findViewById(R.id.btnHome);
+        switchTestData = findViewById(R.id.switchTestData);
 
         if (tvGray == null || tvRed == null || tvGreen == null || tvBlue == null || tvWhite == null) {
             throw new IllegalStateException("RGB TextViews not found in activity_reference_capture.xml");
         }
-        if (btnStart == null || btnReset == null || btnList == null || btnSelectGallery == null) {
+        if (btnReset == null || btnList == null) {
             throw new IllegalStateException("Required buttons not found in activity_reference_capture.xml");
         }
     }
@@ -83,7 +91,6 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
                     float[] rgb15 = result.getData().getFloatArrayExtra("rgb15");
 
                     if (ok && rgb15 != null && rgb15.length >= 15) {
-                        // 새 샘플을 맨 위에 추가
                         samples.add(0, new ReferenceSample(rgb15));
                         updateUi();
                     } else {
@@ -152,7 +159,9 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
         btnSelectGallery.setOnClickListener(v -> pickImageLauncher.launch("image/*"));
 
         btnReset.setOnClickListener(v -> {
-            samples.clear();
+            samples.clear(); // detected_data 삭제
+            ReferenceStore.clearSavedReference(this); // saved_data 삭제
+            Toast.makeText(this, "저장된 데이터가 초기화되었습니다.", Toast.LENGTH_SHORT).show();
             updateUi();
         });
 
@@ -161,6 +170,19 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
             it.putExtra("samples", samples);
             listLauncher.launch(it);
         });
+
+        if (btnMonitor != null) {
+            btnMonitor.setOnClickListener(v ->
+                    startActivity(new Intent(this, ResultActivity.class)));
+        }
+
+        if (btnHome != null) {
+            btnHome.setOnClickListener(v -> {
+                Intent it = new Intent(this, ModeSelectActivity.class);
+                it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(it);
+            });
+        }
     }
 
     private void launchCapture() {
@@ -169,49 +191,15 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
         cameraLauncher.launch(it);
     }
 
-    private List<float[]> toRgbList() {
-        List<float[]> out = new ArrayList<>();
-        for (ReferenceSample s : samples) {
-            if (s != null && s.rgb15 != null && s.rgb15.length >= 15) {
-                out.add(s.rgb15);
-            }
-        }
-        return out;
-    }
-
-    private void saveReference() {
-        List<float[]> rgbList = toRgbList();
-        int n = rgbList.size();
-
-        if (n <= 0) {
-            Toast.makeText(this, "샘플이 없어요. 먼저 추가해주세요.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        ReferenceStore.saveRgbReference(
-                this,
-                ReferenceStore.computeMedianRgb15(rgbList),
-                n,
-                rgbList
-        );
-
-        Toast.makeText(this, "Reference 저장 완료! (n=" + n + ")", Toast.LENGTH_SHORT).show();
-        updateUi();
-    }
-
     private void updateUi() {
         btnList.setEnabled(true);
-        updateSavedRgbViews();
+        updateToggleState();
+        updateCurrentValueViews();
     }
+    private void updateCurrentValueViews() {
+      float[] rgb = ReferenceStore.loadActiveReferenceRgb(this);
 
-    private void updateSavedRgbViews() {
-        float[] saved = null;
-
-        if (ReferenceStore.hasReference(this)) {
-            saved = ReferenceStore.loadRgbReference(this);
-        }
-
-        if (saved == null || saved.length < 15) {
+        if (rgb == null || rgb.length < 15) {
             setRgbViews(
                     0, 0, 0,
                     0, 0, 0,
@@ -223,11 +211,11 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
         }
 
         setRgbViews(
-                Math.round(saved[0]),  Math.round(saved[1]),  Math.round(saved[2]),
-                Math.round(saved[3]),  Math.round(saved[4]),  Math.round(saved[5]),
-                Math.round(saved[6]),  Math.round(saved[7]),  Math.round(saved[8]),
-                Math.round(saved[9]),  Math.round(saved[10]), Math.round(saved[11]),
-                Math.round(saved[12]), Math.round(saved[13]), Math.round(saved[14])
+                Math.round(rgb[0]),  Math.round(rgb[1]),  Math.round(rgb[2]),
+                Math.round(rgb[3]),  Math.round(rgb[4]),  Math.round(rgb[5]),
+                Math.round(rgb[6]),  Math.round(rgb[7]),  Math.round(rgb[8]),
+                Math.round(rgb[9]),  Math.round(rgb[10]), Math.round(rgb[11]),
+                Math.round(rgb[12]), Math.round(rgb[13]), Math.round(rgb[14])
         );
     }
 
@@ -243,5 +231,38 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
         tvGreen.setText(greenR + "," + greenG + "," + greenB);
         tvBlue.setText(blueR + "," + blueG + "," + blueB);
         tvWhite.setText(whiteR + "," + whiteG + "," + whiteB);
+    }
+
+
+    private void updateToggleState() {
+        if (switchTestData == null) return;
+
+        boolean hasSaved = ReferenceStore.hasSavedReference(this);
+        boolean usingTest = ReferenceStore.isUsingTestData(this);
+
+        switchTestData.setOnCheckedChangeListener(null);
+
+        if (!hasSaved) {
+            ReferenceStore.setUsingTestData(this, true);
+
+            switchTestData.setChecked(true);
+            switchTestData.setEnabled(false);
+            switchTestData.setClickable(false);
+            switchTestData.setFocusable(false);
+            switchTestData.setFocusableInTouchMode(false);
+            switchTestData.setAlpha(0.6f);
+        } else {
+            switchTestData.setEnabled(true);
+            switchTestData.setClickable(true);
+            switchTestData.setFocusable(true);
+            switchTestData.setFocusableInTouchMode(true);
+            switchTestData.setAlpha(1.0f);
+
+            switchTestData.setChecked(ReferenceStore.isUsingTestData(this));
+            switchTestData.setOnCheckedChangeListener((btn, isChecked) -> {
+                ReferenceStore.setUsingTestData(this, isChecked);
+                updateCurrentValueViews();
+            });
+        }
     }
 }
