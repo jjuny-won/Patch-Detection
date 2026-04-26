@@ -1,33 +1,55 @@
 package com.example.patch_detection_camera.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.format.DateFormat;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.patch_detection_camera.processing.ShapeConsistencyEvaluator;
-import java.io.File;
+
 import com.example.patch_detection_camera.R;
-import com.example.patch_detection_camera.processing.calibration.ColorCalibrator;
 import com.example.patch_detection_camera.processing.ReferenceStore;
+import com.example.patch_detection_camera.processing.ShapeConsistencyEvaluator;
+import com.example.patch_detection_camera.processing.calibration.ColorCalibrator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class DebugActivity extends AppCompatActivity {
+
     private static final String TAG = "DebugActivity";
 
-    private TextView tv;
+    private TextView tvUpdatedTime;
+
+    private TextView valueCircle;
+    private TextView valueCircleCorrected;
+
+    private TextView valueRect;
+    private TextView valueRectCorrected;
+
+    private TextView valueTriangle;
+    private TextView valueTriangleCorrected;
+
+    private TextView valueHexagon;
+    private TextView valueHexagonCorrected;
+
     private ShapeConsistencyEvaluator.Result sc;
     private String shapesJsonStr;
-    private float[] curMarker;     // from intent (current marker rgb15)
-    private float[] refMarker;     // from storage (reference rgb15)
+    private float[] curMarker;
+    private float[] refMarker;
 
     private ColorCalibrator.Model fit;
     private ColorCalibrator.EvalResult eval;
+
     private final List<ShapeItem> shapes = new ArrayList<>();
 
     static class ShapeItem {
@@ -42,14 +64,15 @@ public class DebugActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_debug);
 
-        tv = findViewById(R.id.tvResultText);
+        bindViews();
+        bindButtons();
+        setUpdatedTime();
 
         shapesJsonStr = getIntent().getStringExtra("shapes_json");
         curMarker = getIntent().getFloatArrayExtra("rgb15");
+        refMarker = ReferenceStore.loadActiveReferenceRgb(this);
 
         parseShapes(shapesJsonStr);
-
-        refMarker = ReferenceStore.loadRgbReference(this);
 
         fit = null;
         eval = null;
@@ -57,14 +80,11 @@ public class DebugActivity extends AppCompatActivity {
         boolean markerOk = false;
 
         if (curMarker != null && refMarker != null) {
-
             fit = ColorCalibrator.fitGammaWbCcmFromMarker(curMarker, refMarker);
 
             if (fit != null && fit.ok) {
-
                 eval = ColorCalibrator.evaluateWithModel(curMarker, refMarker, fit);
                 markerOk = markerImproved(eval);
-
 
                 JSONArray correctedShapes = buildCorrectedShapesJson();
 
@@ -76,12 +96,24 @@ public class DebugActivity extends AppCompatActivity {
                         shapesJsonStr,
                         correctedShapes
                 );
-
-                // 3) 저장된 runs.json 기반으로 다시 계산 (이번 run 포함)
                 try {
-                    File runsFile = ReferenceStore.getRunsFile(this);
-                    sc = ShapeConsistencyEvaluator.evaluate(runsFile, 10);
-                    Log.d(TAG, "ShapeConsistency nLab=" + sc.nLab);
+                    File runsFile;
+
+                    // 현재 사용 기준에 따라 파일 선택
+                    if ("SAVED".equals(ReferenceStore.getActiveReferenceSource(this))) {
+                        runsFile = ReferenceStore.getRunsSavedFile(this);
+                    } else {
+                        runsFile = ReferenceStore.getRunsReferenceFile(this);
+                    }
+
+                    if (runsFile.exists()) {
+                        sc = ShapeConsistencyEvaluator.evaluate(runsFile, 10);
+                        Log.d(TAG, "ShapeConsistency nLab=" + sc.nLab);
+                    } else {
+                        Log.d(TAG, "runs file not found");
+                        sc = null;
+                    }
+
                 } catch (Exception e) {
                     Log.e(TAG, "ShapeConsistency eval failed", e);
                     sc = null;
@@ -89,8 +121,147 @@ public class DebugActivity extends AppCompatActivity {
             }
         }
 
-        renderText(true);
+        bindShapeCards();
     }
+
+    private void bindViews() {
+        tvUpdatedTime = findViewById(R.id.tvUpdatedTime);
+
+        valueCircle = findViewById(R.id.valueCircle);
+        valueCircleCorrected = findViewById(R.id.valueCircleCorrected);
+
+        valueRect = findViewById(R.id.valueRect);
+        valueRectCorrected = findViewById(R.id.valueRectCorrected);
+
+        valueTriangle = findViewById(R.id.valueTriangle);
+        valueTriangleCorrected = findViewById(R.id.valueTriangleCorrected);
+
+        valueHexagon = findViewById(R.id.valueHexagon);
+        valueHexagonCorrected = findViewById(R.id.valueHexagonCorrected);
+    }
+
+    private void bindButtons() {
+        Button btnMonitoring = findViewById(R.id.btnMonitoring);
+        Button btnDebug = findViewById(R.id.btnDebug);
+        Button btnHome = findViewById(R.id.btnHome);
+
+        btnMonitoring.setOnClickListener(v ->
+                Toast.makeText(this, "준비 중", Toast.LENGTH_SHORT).show());
+
+        // "Result" 버튼 → ResultActivity로 back
+        btnDebug.setOnClickListener(v -> finish());
+
+        btnHome.setOnClickListener(v -> {
+            Intent it = new Intent(this, ModeSelectActivity.class);
+            it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(it);
+        });
+
+        // "Color Marker" 칩 → ColorMarkerActivity
+        findViewById(R.id.tvChip).setOnClickListener(v -> {
+            Intent it = new Intent(this, ColorMarkerActivity.class);
+            it.putExtra("rgb15", curMarker);
+            startActivity(it);
+        });
+    }
+
+    private void setUpdatedTime() {
+        String formatted = DateFormat.format("MMM dd, yyyy hh:mm a", new Date()).toString();
+        tvUpdatedTime.setText("Updated " + formatted);
+    }
+
+    private void bindShapeCards() {
+        setAllDefault();
+
+        for (ShapeItem s : shapes) {
+            int rawR = s.r;
+            int rawG = s.g;
+            int rawB = s.b;
+
+            String rawText = formatRgb(rawR, rawG, rawB);
+            String correctedText = rawText;
+
+            if (fit != null && fit.ok) {
+                int[] corr = ColorCalibrator.applyModelToRgb(rawR, rawG, rawB, fit);
+                correctedText = formatRgb(corr[0], corr[1], corr[2]);
+            }
+
+            String type = normalizeType(s.type);
+
+            switch (type) {
+                case "CIRCLE":
+                    valueCircle.setText(rawText);
+                    valueCircleCorrected.setText(correctedText);
+                    break;
+
+                case "SQUARE":
+                case "RECT":
+                case "RECTANGLE":
+                    valueRect.setText(rawText);
+                    valueRectCorrected.setText(correctedText);
+                    break;
+
+                case "TRIANGLE":
+                    valueTriangle.setText(rawText);
+                    valueTriangleCorrected.setText(correctedText);
+                    break;
+
+                case "HEXAGON":
+                    valueHexagon.setText(rawText);
+                    valueHexagonCorrected.setText(correctedText);
+                    break;
+
+                default:
+                    Log.w(TAG, "Unknown shape type: " + s.type);
+                    break;
+            }
+        }
+
+        showFailureIfMissing();
+    }
+
+    private void setAllDefault() {
+        valueCircle.setText("-");
+        valueCircleCorrected.setText("-");
+
+        valueRect.setText("-");
+        valueRectCorrected.setText("-");
+
+        valueTriangle.setText("-");
+        valueTriangleCorrected.setText("-");
+
+        valueHexagon.setText("-");
+        valueHexagonCorrected.setText("-");
+    }
+
+    private void showFailureIfMissing() {
+        if (valueTriangle.getText().toString().equals("-")) {
+            valueTriangle.setText("검출 실패");
+            valueTriangleCorrected.setText("검출 실패");
+        }
+        if (valueCircle.getText().toString().equals("-")) {
+            valueCircle.setText("검출 실패");
+            valueCircleCorrected.setText("검출 실패");
+        }
+        if (valueRect.getText().toString().equals("-")) {
+            valueRect.setText("검출 실패");
+            valueRectCorrected.setText("검출 실패");
+        }
+        if (valueHexagon.getText().toString().equals("-")) {
+            valueHexagon.setText("검출 실패");
+            valueHexagonCorrected.setText("검출 실패");
+        }
+    }
+
+    private static String normalizeType(String type) {
+        if (type == null) return "UNKNOWN";
+        return type.trim().toUpperCase(Locale.US);
+    }
+
+    private static String formatRgb(int r, int g, int b) {
+        return String.format(Locale.US, "( %d, %d, %d )", r, g, b);
+    }
+
     private JSONArray buildCorrectedShapesJson() {
         JSONArray arr = new JSONArray();
 
@@ -112,7 +283,9 @@ public class DebugActivity extends AppCompatActivity {
                 o.put("corr_b", corr[2]);
 
                 arr.put(o);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                Log.e(TAG, "buildCorrectedShapesJson error", e);
+            }
         }
 
         return arr;
@@ -120,11 +293,13 @@ public class DebugActivity extends AppCompatActivity {
 
     private void parseShapes(String s) {
         shapes.clear();
-        if (s == null) return;
+        if (s == null || s.trim().isEmpty()) return;
+
         try {
             JSONArray arr = new JSONArray(s);
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.getJSONObject(i);
+
                 ShapeItem it = new ShapeItem();
                 it.type = o.optString("type", "UNKNOWN");
                 it.r = o.optInt("r", 0);
@@ -135,6 +310,7 @@ public class DebugActivity extends AppCompatActivity {
                 it.y = o.optInt("y", 0);
                 it.w = o.optInt("w", 0);
                 it.h = o.optInt("h", 0);
+
                 shapes.add(it);
             }
         } catch (Exception e) {
@@ -142,177 +318,14 @@ public class DebugActivity extends AppCompatActivity {
         }
     }
 
-    private void renderText(boolean corrected) {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("MODE: ").append(corrected ? "CORRECTED" : "RAW").append("\n\n");
-
-        // ----------------------------
-        // Marker quality (RMSE + ΔE)
-        // ----------------------------
-        if (refMarker == null) {
-            sb.append("Reference: NOT FOUND\n\n");
-        } else if (fit == null || !fit.ok) {
-            sb.append("Calib: FAILED\n");
-            sb.append(" - reason: ").append(fit != null ? fit.error : "null").append("\n\n");
-        } else if (eval == null) {
-            sb.append("Calib: FAILED\n");
-            sb.append(" - reason: eval null\n\n");
-        } else {
-            sb.append("Calib: OK (3x3)\n");
-            sb.append(" - RMSE Improve(%): ").append(String.format("%.1f", eval.improvementPct)).append("%\n");
-            if (eval.reason != null && !eval.reason.isEmpty()) sb.append(" (").append(eval.reason).append(")");
-            sb.append("\n");
-
-            sb.append(" - MarkerImproved: ")
-                    .append(markerImproved(eval) ? "YES ✅" : "NO ❌")
-                    .append("\n\n");
-
-            sb.append(" - BEFORE ΔE76 (mean/med/max): ")
-                    .append(String.format("%.2f", eval.beforeDeltaEMean)).append(" / ")
-                    .append(String.format("%.2f", eval.beforeDeltaEMedian)).append(" / ")
-                    .append(String.format("%.2f", eval.beforeDeltaEMax)).append("\n");
-
-            sb.append(" - AFTER  ΔE76 (mean/med/max): ")
-                    .append(String.format("%.2f", eval.afterDeltaEMean)).append(" / ")
-                    .append(String.format("%.2f", eval.afterDeltaEMedian)).append(" / ")
-                    .append(String.format("%.2f", eval.afterDeltaEMax)).append("\n\n");
-
-            appendPerPatchDeltaE(sb);
-            // ----------------------------
-// Shape consistency (runs.json lastK)
-// ----------------------------
-            sb.append("Shape Consistency (lastK)\n");
-            if (sc == null || sc.nLab <= 0) {
-                sb.append(" - not enough runs\n\n");
-            } else {
-                sb.append(String.format(" - nLab=%d\n", sc.nLab));
-                sb.append(String.format(" - σ(L,a,b)=%.2f / %.2f / %.2f\n", sc.sigmaL, sc.sigmaA, sc.sigmaB));
-                sb.append(String.format(" - pairwise ΔE(mean/max)=%.2f / %.2f\n\n", sc.pairwiseDeltaEMean, sc.pairwiseDeltaEMax));
-            }
-            sb.append("\n");
-        }
-
-        // ----------------------------
-        // Reference meta
-        // ----------------------------
-        JSONObject meta = ReferenceStore.loadMeta(this);
-        if (refMarker != null && meta != null) {
-            int n = meta.optInt("sample_n", meta.optInt("sampleCount", -1));
-            long t = meta.optLong("saved_time_ms", meta.optLong("updatedAt", 0L));
-
-            sb.append("Reference Meta\n");
-            sb.append(" - ref sampleN: ").append(n).append("\n");
-            sb.append(" - saved: ").append(
-                    android.text.format.DateFormat.format("yyyy-MM-dd HH:mm:ss", t)
-            ).append("\n");
-            sb.append(" - path: ").append(ReferenceStore.getReferencePath(this)).append("\n\n");
-        }
-
-        // ----------------------------
-        // Shapes
-        // ----------------------------
-        if (shapes.isEmpty()) {
-            sb.append("No shapes detected.\n");
-            tv.setText(sb.toString());
-            return;
-        }
-
-        for (int i = 0; i < shapes.size(); i++) {
-            ShapeItem s = shapes.get(i);
-
-            int rr = s.r, gg = s.g, bb = s.b;
-            if (corrected && fit != null && fit.ok) {
-                int[] out = ColorCalibrator.applyModelToRgb(s.r, s.g, s.b, fit);
-                rr = out[0];
-                gg = out[1];
-                bb = out[2];
-            }
-
-            sb.append(i).append(") ").append(s.type).append("\n");
-            sb.append("  RGB: ").append(rr).append(", ").append(gg).append(", ").append(bb);
-            if (corrected && fit != null && fit.ok) {
-                sb.append("   (raw ").append(s.r).append(",").append(s.g).append(",").append(s.b).append(")");
-            }
-            sb.append("\n");
-        }
-
-        tv.setText(sb.toString());
-    }
-
-    /**
-     * marker(rgb15 or rgb45)의 patch별 ΔE76를 출력
-     * - BEFORE: curMarker vs refMarker
-     * - AFTER : correctedMarker vs refMarker   (correctedMarker는 fit model 적용)
-     *
-     * 추가로 worst patch(ΔE max)도 표시해줌.
-     */
-    private void appendPerPatchDeltaE(StringBuilder sb) {
-        if (curMarker == null || refMarker == null || fit == null || !fit.ok) return;
-
-        int len = Math.min(curMarker.length, refMarker.length);
-        if (len < 15 || (len % 3) != 0) return;
-
-        int N = len / 3;
-
-        // BEFORE per-patch ΔE: cur vs ref
-        double[] deBefore = ColorCalibrator.deltaEPerPatch(curMarker, refMarker);
-
-        // AFTER per-patch ΔE: corrected(cur) vs ref
-        float[] correctedMarker = ColorCalibrator.applyModelToMarker(curMarker, fit);
-        double[] deAfter = (correctedMarker != null)
-                ? ColorCalibrator.deltaEPerPatch(correctedMarker, refMarker)
-                : null;
-
-        sb.append("Per-patch ΔE76\n");
-
-        int worstIdxBefore = -1;
-        double worstBefore = -1;
-
-        int worstIdxAfter = -1;
-        double worstAfter = -1;
-
-        for (int i = 0; i < N; i++) {
-            double b = (deBefore != null && i < deBefore.length) ? deBefore[i] : Double.NaN;
-            double a = (deAfter != null && i < deAfter.length) ? deAfter[i] : Double.NaN;
-
-            if (Double.isFinite(b) && b > worstBefore) { worstBefore = b; worstIdxBefore = i; }
-            if (Double.isFinite(a) && a > worstAfter) { worstAfter = a; worstIdxAfter = i; }
-
-            int cr = Math.round(curMarker[i * 3]);
-            int cg = Math.round(curMarker[i * 3 + 1]);
-            int cb = Math.round(curMarker[i * 3 + 2]);
-
-            int rr = Math.round(refMarker[i * 3]);
-            int rg = Math.round(refMarker[i * 3 + 1]);
-            int rb = Math.round(refMarker[i * 3 + 2]);
-
-            int ar = cr, ag = cg, ab = cb;
-            if (correctedMarker != null) {
-                ar = Math.round(correctedMarker[i * 3]);
-                ag = Math.round(correctedMarker[i * 3 + 1]);
-                ab = Math.round(correctedMarker[i * 3 + 2]);
-            }
-
-            sb.append(String.format(" - P%02d: ΔE before=%.2f  after=%.2f\n", i, b, a));
-            sb.append(String.format("        cur=(%d,%d,%d)  corr=(%d,%d,%d)  ref=(%d,%d,%d)\n",
-                    cr, cg, cb, ar, ag, ab, rr, rg, rb));
-        }
-
-        if (worstIdxAfter >= 0) {
-            sb.append(String.format("\nWorst AFTER: P%02d (ΔE=%.2f)\n", worstIdxAfter, worstAfter));
-        }
-        if (worstIdxBefore >= 0) {
-            sb.append(String.format("Worst BEFORE: P%02d (ΔE=%.2f)\n", worstIdxBefore, worstBefore));
-        }
-    }
-
     private static boolean markerImproved(ColorCalibrator.EvalResult ev) {
         if (ev == null) return false;
-        if (!Double.isFinite(ev.beforeDeltaEMedian) || !Double.isFinite(ev.afterDeltaEMedian)) return false;
+        if (!Double.isFinite(ev.beforeDeltaEMedian) || !Double.isFinite(ev.afterDeltaEMedian)) {
+            return false;
+        }
 
         double diff = ev.beforeDeltaEMedian - ev.afterDeltaEMedian;
-        boolean medianImproved = diff >= 0.30; // 너무 작은 변화는 노이즈일 수 있음
+        boolean medianImproved = diff >= 0.30;
         boolean maxNotWorse = Double.isFinite(ev.beforeDeltaEMax) && Double.isFinite(ev.afterDeltaEMax)
                 ? (ev.afterDeltaEMax <= ev.beforeDeltaEMax + 0.01)
                 : true;

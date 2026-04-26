@@ -1,23 +1,536 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:padding="16dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#D1DEDD">
 
+    <!-- 파란 곡선 헤더 -->
+    <View
+        android:id="@+id/headerBg"
+        android:layout_width="0dp"
+        android:layout_height="100dp"
+        android:background="@drawable/bg_header_blue"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <TextView
+        android:id="@+id/tvHeaderTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wound Status"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        app:layout_constraintTop_toTopOf="@id/headerBg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvUpdatedTime" />
+
+    <TextView
+        android:id="@+id/tvUpdatedTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#DDEEFF"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintBottom_toBottomOf="@id/headerBg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Color Marker 칩 (우측 정렬, 클릭 → ColorMarkerActivity) -->
+    <TextView
+        android:id="@+id/tvChip"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="Color Marker"
+        android:textSize="14sp"
+        android:textColor="#5A7070"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:background="@drawable/bg_rounded_white_button"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBg"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 스크롤 영역 -->
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="12dp">
+        android:id="@+id/scrollContent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="60dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBg"
+        app:layout_constraintBottom_toTopOf="@id/bottomBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
-            android:id="@+id/tvResultText"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:typeface="monospace"/>
+            android:orientation="vertical"
+            android:paddingBottom="8dp">
+
+            <!-- pH 행 (lavender) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_result_row_ph"
+                android:padding="16dp"
+                android:layout_marginBottom="10dp">
+
+                <!-- 왼쪽: 도형 + 라벨 -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="12dp">
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/icon_circle"
+                        android:scaleType="fitCenter"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="pH"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#5B3FA0"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- 오른쪽: Color / Calibrated pill rows -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Color"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#5B3FA0"/>
+                        <TextView
+                            android:id="@+id/valueCircle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#5B3FA0"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Calibrated"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#5B3FA0"/>
+                        <TextView
+                            android:id="@+id/valueCircleCorrected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#5B3FA0"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Temp 행 (peach) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_result_row_temp"
+                android:padding="16dp"
+                android:layout_marginBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="12dp">
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/icon_rect"
+                        android:scaleType="fitCenter"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Temp"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#C07030"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Color"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#C07030"/>
+                        <TextView
+                            android:id="@+id/valueRect"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#C07030"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Calibrated"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#C07030"/>
+                        <TextView
+                            android:id="@+id/valueRectCorrected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#C07030"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Glucose 행 (white card) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_result_row_glucose"
+                android:padding="16dp"
+                android:layout_marginBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="12dp">
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/icon_triangle"
+                        android:scaleType="fitCenter"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Glucose"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#2D5E3C"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Color"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#2D5E3C"/>
+                        <TextView
+                            android:id="@+id/valueTriangle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#2D5E3C"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Calibrated"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#2D5E3C"/>
+                        <TextView
+                            android:id="@+id/valueTriangleCorrected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#2D5E3C"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Uric acid 행 (light blue) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_result_row_uric"
+                android:padding="16dp"
+                android:layout_marginBottom="4dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="12dp">
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/icon_polygon"
+                        android:scaleType="fitCenter"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Uric acid"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#3A5580"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Color"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#3A5580"/>
+                        <TextView
+                            android:id="@+id/valueHexagon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#3A5580"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Calibrated"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#3A5580"/>
+                        <TextView
+                            android:id="@+id/valueHexagonCorrected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#3A5580"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
     </ScrollView>
 
-</LinearLayout>
+    <!-- 하단 버튼 -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMonitoring"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Monitor"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDebug"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Result"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHome"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:text="Home"
+            android:textAllCaps="false"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#5A7070"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+    </LinearLayout>
+
+    <!-- 기존 로직 호환용 숨김 뷰 -->
+    <TextView
+        android:id="@+id/tvResultText"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

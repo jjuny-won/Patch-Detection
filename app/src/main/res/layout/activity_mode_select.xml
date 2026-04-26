@@ -4,64 +4,99 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#C7D6D4">
+    android:background="#B7CCCB">
 
-
-    <ImageView
-        android:id="@+id/imgLogo"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_marginTop="80dp"
-        android:src="@drawable/ic_main_logo"
-        android:contentDescription="main logo"
-        android:scaleType="fitCenter"
+    <LinearLayout
+        android:id="@+id/contentLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Camera -->
-    <Button
-        android:id="@+id/btnCamera"
-        android:layout_width="240dp"
-        android:layout_height="62dp"
-        android:layout_marginTop="48dp"
-        android:text="Camera"
-        android:textAllCaps="false"
-        android:textSize="20sp"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/bg_rounded_button"
-        app:layout_constraintTop_toBottomOf="@id/imgLogo"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <ImageView
+            android:id="@+id/imgLogo"
+            android:layout_width="500dp"
+            android:layout_height="250dp"
+            android:src="@drawable/ic_main_logo"
+            android:contentDescription="main logo"
+            android:scaleType="fitCenter" />
 
-    <!-- Gallery -->
-    <Button
-        android:id="@+id/btnGallery"
-        android:layout_width="240dp"
-        android:layout_height="62dp"
-        android:layout_marginTop="22dp"
-        android:text="Gallery"
-        android:textAllCaps="false"
-        android:textSize="20sp"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/bg_rounded_button"
-        app:layout_constraintTop_toBottomOf="@id/btnCamera"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCamera"
+            android:layout_width="220dp"
+            android:layout_height="56dp"
+            android:text="Camera"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#3D5C5C"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
 
-    <Button
-        android:id="@+id/btnReference"
-        android:layout_width="240dp"
-        android:layout_height="62dp"
-        android:layout_marginTop="40dp"
-        android:text="View Reference"
-        android:textAllCaps="false"
-        android:textSize="18sp"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/bg_rounded_button"
-        app:layout_constraintTop_toBottomOf="@id/btnGallery"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGallery"
+            android:layout_width="220dp"
+            android:layout_height="56dp"
+            android:text="Gallery"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#3D5C5C"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReference"
+            android:layout_width="220dp"
+            android:layout_height="56dp"
+            android:text="Reference"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#3D5C5C"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHistory"
+            android:layout_width="220dp"
+            android:layout_height="56dp"
+            android:text="History"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#3D5C5C"
+            app:backgroundTint="#FFFFFF"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"
+            app:rippleColor="#20000000" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

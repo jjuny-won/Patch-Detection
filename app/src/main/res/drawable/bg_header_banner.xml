@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/bg_header_banner.xml -->
+<!-- 하단이 물결 모양인 헤더 배경. ShapeDrawable로 단순 라운드 처리.
+     더 정교한 물결 효과가 필요하면 커스텀 View 또는 Path를 사용하세요. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#6BA4C4"/>
+    <corners
+        android:bottomLeftRadius="32dp"
+        android:bottomRightRadius="32dp"/>
+</shape>

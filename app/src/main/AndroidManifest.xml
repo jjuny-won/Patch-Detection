@@ -21,6 +21,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Patch_Detection_Camera">
 
+        <activity android:name=".ui.WoundMonitoringActivity" />
+        <activity android:name=".ui.DressingHistoryActivity" />
         <activity android:name=".ui.ReferenceCaptureActivity" />
         <activity android:name=".ui.PreviewActivity" />
         <activity android:name=".ui.CameraActivity" />
@@ -28,6 +30,7 @@
         <activity android:name=".ui.ResultActivity" />
         <activity android:name=".ui.DebugActivity" />
         <activity android:name=".ui.ReferenceListActivity"/>
+        <activity android:name=".ui.ColorMarkerActivity"/>
         <activity android:name=".ui.ModeSelectActivity"
             android:exported="true">
             <intent-filter>

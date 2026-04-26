@@ -1,33 +1,43 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
-    android:height="200dp"
-    android:viewportWidth="200"
-    android:viewportHeight="200">
+    android:height="150dp"
+    android:viewportWidth="400"
+    android:viewportHeight="300">
 
-    <!-- Heart outline -->
+    <!-- Heart left half -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M200,175 C180,158 145,145 145,118 C145,102 157,92 170,92 C182,92 192,100 200,110" />
+
+    <!-- Heart right half top (up to ECG exit point) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M200,110 C208,100 218,92 230,92 C243,92 255,102 255,118 C255,128 250,136 244,144" />
+
+    <!-- Heart right half bottom (after ECG re-enters) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M222,163 C215,170 208,176 200,183 L200,175" />
+
+    <!-- ECG line through heart -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="4"
         android:fillColor="@android:color/transparent"
-        android:pathData="
-        M100,160
-        C40,110 30,70 60,50
-        C80,35 100,50 100,50
-        C100,50 120,35 140,50
-        C170,70 160,110 100,160" />
-
-    <!-- ECG line -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
-        android:fillColor="@android:color/transparent"
-        android:pathData="
-        M30,100
-        L60,100
-        L75,80
-        L90,120
-        L110,70
-        L130,110
-        L160,100" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M60,144 L244,144 L252,144 L258,132 L264,162 L270,110 L276,162 L282,144 L340,144" />
 
 </vector>

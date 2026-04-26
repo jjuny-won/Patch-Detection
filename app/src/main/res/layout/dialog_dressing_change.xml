@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_history_list_card">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="드레싱 교체"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#222222"
+        android:gravity="center"
+        android:layout_marginBottom="20dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <EditText
+            android:id="@+id/etYear"
+            android:layout_width="56dp"
+            android:layout_height="wrap_content"
+            android:hint="년"
+            android:inputType="number"
+            android:maxLength="4"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=" 년 " android:textSize="14sp" android:textColor="#444444"/>
+
+        <EditText
+            android:id="@+id/etMonth"
+            android:layout_width="36dp"
+            android:layout_height="wrap_content"
+            android:hint="월"
+            android:inputType="number"
+            android:maxLength="2"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=" 월 " android:textSize="14sp" android:textColor="#444444"/>
+
+        <EditText
+            android:id="@+id/etDay"
+            android:layout_width="36dp"
+            android:layout_height="wrap_content"
+            android:hint="일"
+            android:inputType="number"
+            android:maxLength="2"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=" 일 " android:textSize="14sp" android:textColor="#444444"/>
+
+        <EditText
+            android:id="@+id/etHour"
+            android:layout_width="36dp"
+            android:layout_height="wrap_content"
+            android:hint="시"
+            android:inputType="number"
+            android:maxLength="2"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=" 시 " android:textSize="14sp" android:textColor="#444444"/>
+
+        <EditText
+            android:id="@+id/etMinute"
+            android:layout_width="36dp"
+            android:layout_height="wrap_content"
+            android:hint="분"
+            android:inputType="number"
+            android:maxLength="2"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:padding="4dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=" 분" android:textSize="14sp" android:textColor="#444444"/>
+    </LinearLayout>
+
+    <CheckBox
+        android:id="@+id/cbCurrentDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="현재 날짜로 입력"
+        android:textSize="14sp"
+        android:textColor="#444444"
+        android:layout_marginBottom="20dp"/>
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="4dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnConfirm"
+        android:layout_width="100dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:text="확인"
+        android:textAllCaps="false"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="#7B9BBF"
+        android:layout_marginEnd="8dp"
+        app:cornerRadius="12dp"
+        app:elevation="0dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancel"
+        android:layout_width="100dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:text="취소"
+        android:textAllCaps="false"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="#7B9BBF"
+        app:cornerRadius="12dp"
+        android:layout_marginEnd="8dp"
+        app:elevation="0dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto"/>
+    </LinearLayout>
+
+</LinearLayout>

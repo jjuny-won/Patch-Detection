@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/bg_color_bar_track.xml -->
+<!-- 실제 그라데이션은 코드에서 GradientDrawable로 동적 설정 권장.
+     여기서는 기본 placeholder 배경. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:startColor="#C8A0D8"
+        android:centerColor="#F0C060"
+        android:endColor="#E07840"
+        android:angle="0"/>
+    <corners android:radius="8dp"/>
+</shape>

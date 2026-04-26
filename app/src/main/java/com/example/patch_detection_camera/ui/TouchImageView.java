@@ -10,9 +10,10 @@ import androidx.appcompat.widget.AppCompatImageView;
 public class TouchImageView extends AppCompatImageView implements View.OnTouchListener {
 
     private final Matrix matrix = new Matrix();
-    private final Matrix saved = new Matrix();
-    private final PointF start = new PointF();
-    private float oldDist = 1f;
+    private final Matrix saved  = new Matrix();
+    private final PointF start  = new PointF();
+    private float oldDist  = 1f;
+    private float oldAngle = 0f;   // angle between two fingers at POINTER_DOWN
 
     private static final int NONE=0, DRAG=1, ZOOM=2;
     private int mode = NONE;
@@ -34,6 +35,7 @@ public class TouchImageView extends AppCompatImageView implements View.OnTouchLi
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         switch (event.getActionMasked()) {
+
             case MotionEvent.ACTION_DOWN:
                 saved.set(matrix);
                 start.set(event.getX(), event.getY());
@@ -41,7 +43,8 @@ public class TouchImageView extends AppCompatImageView implements View.OnTouchLi
                 break;
 
             case MotionEvent.ACTION_POINTER_DOWN:
-                oldDist = spacing(event);
+                oldDist  = spacing(event);
+                oldAngle = fingerAngle(event);
                 if (oldDist > 10f) {
                     saved.set(matrix);
                     mode = ZOOM;
@@ -55,14 +58,18 @@ public class TouchImageView extends AppCompatImageView implements View.OnTouchLi
                     float dy = event.getY() - start.y;
                     matrix.postTranslate(dx, dy);
                     setImageMatrix(matrix);
+
                 } else if (mode == ZOOM && event.getPointerCount() >= 2) {
-                    float newDist = spacing(event);
+                    float newDist  = spacing(event);
+                    float newAngle = fingerAngle(event);
                     if (newDist > 10f) {
-                        float scale = newDist / oldDist;
+                        float scale    = newDist / oldDist;
+                        float rotation = newAngle - oldAngle;   // degrees delta
                         float cx = (event.getX(0) + event.getX(1)) / 2f;
                         float cy = (event.getY(0) + event.getY(1)) / 2f;
                         matrix.set(saved);
                         matrix.postScale(scale, scale, cx, cy);
+                        matrix.postRotate(rotation, cx, cy);    // rotate around midpoint
                         setImageMatrix(matrix);
                     }
                 }
@@ -76,9 +83,17 @@ public class TouchImageView extends AppCompatImageView implements View.OnTouchLi
         return true;
     }
 
+    /** Distance between two touch points. */
     private float spacing(MotionEvent e) {
         float x = e.getX(0) - e.getX(1);
         float y = e.getY(0) - e.getY(1);
-        return (float)Math.sqrt(x*x + y*y);
+        return (float) Math.sqrt(x * x + y * y);
+    }
+
+    /** Angle (degrees) of the line connecting two touch points. */
+    private float fingerAngle(MotionEvent e) {
+        float dx = e.getX(1) - e.getX(0);
+        float dy = e.getY(1) - e.getY(0);
+        return (float) Math.toDegrees(Math.atan2(dy, dx));
     }
 }

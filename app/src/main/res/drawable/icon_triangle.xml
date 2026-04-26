@@ -1,12 +1,10 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="45dp"
-    android:height="45dp"
+    android:width="56dp"
+    android:height="56dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-
+    <!-- 실제 마커의 삼각형: 진파랑/네이비 -->
     <path
-        android:fillColor="#DDDDDD"
-        android:strokeColor="#000"
-        android:strokeWidth="4"
-        android:pathData="M50,10 L90,90 L10,90 Z"/>
+        android:fillColor="#2B4A8B"
+        android:pathData="M50,8 L92,88 L8,88 Z"/>
 </vector>

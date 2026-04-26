@@ -22,8 +22,6 @@ public class AdjustRoiActivity extends AppCompatActivity {
     private ActivityAdjustRoiBinding vb;
 
     private Bitmap sourceNormalized;
-
-    // ✅ PreviewActivity 결과 받기
     private ActivityResultLauncher<Intent> previewLauncher;
 
     @Override
@@ -36,7 +34,6 @@ public class AdjustRoiActivity extends AppCompatActivity {
         if (uriStr == null) { finish(); return; }
         Uri uri = Uri.parse(uriStr);
 
-        // ✅ mode를 그대로 전달 (REFERENCE/일반)
         final String mode = getIntent().getStringExtra("mode");   // "REFERENCE" expected
         final String source = getIntent().getStringExtra("source"); // "gallery" 등
 
@@ -77,12 +74,11 @@ public class AdjustRoiActivity extends AppCompatActivity {
                 return;
             }
 
-            // ✅ PreviewActivity를 forResult로 띄움
+
             Intent intent = new Intent(this, PreviewActivity.class);
             intent.putExtra("image_uri", uriStr);
             if (source != null) intent.putExtra("source", source);
 
-            // ✅ 중요: PreviewActivity가 reference 저장 로직을 타도록 mode 전달
             if (mode != null) intent.putExtra("mode", mode); // "REFERENCE"
 
             // ROI 전달
@@ -105,29 +101,27 @@ public class AdjustRoiActivity extends AppCompatActivity {
         Matrix inv = new Matrix();
         if (!m.invert(inv)) return null;
 
-        RectF roiBmp = new RectF();
-        inv.mapRect(roiBmp, roiView);
+        // Map ROI circle center: view coords → bitmap coords (handles rotation correctly)
+        float[] centerPt = { roiView.centerX(), roiView.centerY() };
+        inv.mapPoints(centerPt);
+
+        // Map a point on the right edge of the circle to compute radius in bitmap coords
+        float[] edgePt = { roiView.centerX() + roiView.width() / 2f, roiView.centerY() };
+        inv.mapPoints(edgePt);
+
+        float bmpCx = centerPt[0];
+        float bmpCy = centerPt[1];
+        float bmpR  = (float) Math.sqrt(
+                (edgePt[0] - bmpCx) * (edgePt[0] - bmpCx) +
+                (edgePt[1] - bmpCy) * (edgePt[1] - bmpCy));
 
         float bw = sourceNormalized.getWidth();
         float bh = sourceNormalized.getHeight();
 
-        float left   = clamp(roiBmp.left,   0f, bw);
-        float top    = clamp(roiBmp.top,    0f, bh);
-        float right  = clamp(roiBmp.right,  0f, bw);
-        float bottom = clamp(roiBmp.bottom, 0f, bh);
-
-        float w = Math.max(1f, right - left);
-        float h = Math.max(1f, bottom - top);
-
-        float cx = (left + right) * 0.5f / bw;
-        float cy = (top + bottom) * 0.5f / bh;
-        float nw = w / bw;
-        float nh = h / bh;
-
-        cx = clamp(cx, 0f, 1f);
-        cy = clamp(cy, 0f, 1f);
-        nw = clamp(nw, 0.001f, 1f);
-        nh = clamp(nh, 0.001f, 1f);
+        float cx = clamp(bmpCx / bw, 0f, 1f);
+        float cy = clamp(bmpCy / bh, 0f, 1f);
+        float nw = clamp(2f * bmpR / bw, 0.001f, 1f);
+        float nh = clamp(2f * bmpR / bh, 0.001f, 1f);
 
         return new NormalizedRoi(cx, cy, nw, nh);
     }
