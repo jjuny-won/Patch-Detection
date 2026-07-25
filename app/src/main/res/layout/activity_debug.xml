@@ -88,7 +88,7 @@
                     <ImageView
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:src="@drawable/icon_circle"
+                        android:src="@drawable/icon_triangle"
                         android:scaleType="fitCenter"/>
                     <TextView
                         android:layout_width="wrap_content"
@@ -277,7 +277,7 @@
                     <ImageView
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:src="@drawable/icon_triangle"
+                        android:src="@drawable/icon_triangle_filled_glucose"
                         android:scaleType="fitCenter"/>
                     <TextView
                         android:layout_width="wrap_content"
