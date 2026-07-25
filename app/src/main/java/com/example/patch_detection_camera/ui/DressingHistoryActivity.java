@@ -1,7 +1,10 @@
 package com.example.patch_detection_camera.ui;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +15,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
+import java.util.concurrent.TimeUnit;
 
 import com.example.patch_detection_camera.R;
 
@@ -29,10 +38,10 @@ public class DressingHistoryActivity extends AppCompatActivity {
         setContentView(R.layout.activity_dressing_history);
 
         recordsContainer = findViewById(R.id.recordsContainer);
-
         loadAndDisplayRecords();
+        requestNotificationPermission();
 
-        findViewById(R.id.btnDressingChange).setOnClickListener(v -> showDressingChangeDialog());
+        findViewById(R.id.btnDressingChange).setOnClickListener(v -> showDressingDialog(null));
 
         findViewById(R.id.btnHome).setOnClickListener(v -> {
             Intent it = new Intent(this, ModeSelectActivity.class);
@@ -49,7 +58,17 @@ public class DressingHistoryActivity extends AppCompatActivity {
 
     private void loadAndDisplayRecords() {
         recordsContainer.removeAllViews();
-        List<DressingRecord> records = DressingStore.loadRecords(this);
+        FirebaseRepository.getInstance().loadDressingRecords(new FirebaseRepository.DressingCallback() {
+            @Override public void onSuccess(List<DressingRecord> records) { displayRecords(records); }
+            @Override public void onFailure(Exception e) {
+                Toast.makeText(DressingHistoryActivity.this, "서버 연결 실패. 로컬 데이터를 표시합니다.", Toast.LENGTH_SHORT).show();
+                displayRecords(DressingStore.loadRecords(DressingHistoryActivity.this));
+            }
+        });
+    }
+
+    private void displayRecords(List<DressingRecord> records) {
+        recordsContainer.removeAllViews();
 
         if (records.isEmpty()) {
             TextView empty = new TextView(this);
@@ -73,16 +92,8 @@ public class DressingHistoryActivity extends AppCompatActivity {
                 itemView.findViewById(R.id.divider).setVisibility(View.GONE);
             }
 
-            final long timestamp = record.getTimestamp();
             itemView.setOnLongClickListener(v -> {
-                new AlertDialog.Builder(this)
-                        .setMessage("삭제하시겠습니까?")
-                        .setPositiveButton("삭제", (dialog, which) -> {
-                            DressingStore.deleteRecord(this, timestamp);
-                            loadAndDisplayRecords();
-                        })
-                        .setNegativeButton("취소", null)
-                        .show();
+                showRecordOptions(record);
                 return true;
             });
 
@@ -90,16 +101,62 @@ public class DressingHistoryActivity extends AppCompatActivity {
         }
     }
 
-    private void showDressingChangeDialog() {
+    // 수정/삭제 선택 다이얼로그
+    private void showRecordOptions(DressingRecord record) {
+        new AlertDialog.Builder(this)
+                .setItems(new String[]{"수정", "삭제"}, (dialog, which) -> {
+                    if (which == 0) showDressingDialog(record);
+                    else           confirmDelete(record);
+                })
+                .show();
+    }
+
+    private void confirmDelete(DressingRecord record) {
+        new AlertDialog.Builder(this)
+                .setMessage("삭제하시겠습니까?")
+                .setPositiveButton("삭제", (d, w) ->
+                        FirebaseRepository.getInstance().deleteDressingRecord(record.getTimestamp(),
+                                new FirebaseRepository.SimpleCallback() {
+                                    @Override public void onSuccess() {
+                                        DressingStore.deleteRecord(DressingHistoryActivity.this, record.getTimestamp());
+                                        loadAndDisplayRecords();
+                                    }
+                                    @Override public void onFailure(Exception e) {
+                                        Toast.makeText(DressingHistoryActivity.this, "삭제 실패", Toast.LENGTH_SHORT).show();
+                                    }
+                                }))
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    // record == null 이면 신규 등록, non-null 이면 수정
+    private void showDressingDialog(DressingRecord existing) {
         View dialogView = LayoutInflater.from(this)
                 .inflate(R.layout.dialog_dressing_change, null);
 
-        EditText etYear    = dialogView.findViewById(R.id.etYear);
-        EditText etMonth   = dialogView.findViewById(R.id.etMonth);
-        EditText etDay     = dialogView.findViewById(R.id.etDay);
-        EditText etHour    = dialogView.findViewById(R.id.etHour);
-        EditText etMinute  = dialogView.findViewById(R.id.etMinute);
+        EditText etYear   = dialogView.findViewById(R.id.etYear);
+        EditText etMonth  = dialogView.findViewById(R.id.etMonth);
+        EditText etDay    = dialogView.findViewById(R.id.etDay);
+        EditText etHour   = dialogView.findViewById(R.id.etHour);
+        EditText etMinute = dialogView.findViewById(R.id.etMinute);
         CheckBox cbCurrent = dialogView.findViewById(R.id.cbCurrentDate);
+
+        // 수정 모드: 기존 값 파싱해서 미리 채움
+        if (existing != null) {
+            try {
+                // dateStr 형식: "2026.05. 26"
+                String[] dateParts = existing.getDateStr().split("\\.");
+                etYear.setText(dateParts[0].trim());
+                etMonth.setText(dateParts[1].trim());
+                etDay.setText(dateParts[2].trim());
+            } catch (Exception ignored) {}
+            try {
+                // timeStr 형식: "03 : 55"
+                String[] timeParts = existing.getTimeStr().split(" : ");
+                etHour.setText(timeParts[0].trim());
+                etMinute.setText(timeParts[1].trim());
+            } catch (Exception ignored) {}
+        }
 
         cbCurrent.setOnCheckedChangeListener((btn, isChecked) -> {
             if (isChecked) {
@@ -137,15 +194,52 @@ public class DressingHistoryActivity extends AppCompatActivity {
             String dateStr = String.format(Locale.US, "%s.%s. %s", yearStr, monthStr, dayStr);
             String timeStr = String.format(Locale.US, "%s : %s", hourStr, minuteStr);
 
-            DressingStore.addRecord(this, new DressingRecord(
-                    System.currentTimeMillis(), dateStr, timeStr));
+            // 수정이면 원래 timestamp 유지, 신규면 현재 시각
+            long ts = (existing != null) ? existing.getTimestamp() : System.currentTimeMillis();
+            DressingRecord record = new DressingRecord(ts, dateStr, timeStr);
 
-            dialog.dismiss();
-            loadAndDisplayRecords();
+            DressingStore.updateRecord(this, record); // 로컬 저장 (신규도 upsert 동작)
+            DressingStore.setActiveDressingId(this, ts); // 현재 활성 dressingId 갱신
+
+            // 드레싱 스케줄 저장 + 6시간 알림 예약
+            DressingSchedule schedule = new DressingSchedule(System.currentTimeMillis());
+            FirebaseRepository.getInstance().saveDressingSchedule(schedule, null);
+            scheduleDressingReminder();
+
+            FirebaseRepository.getInstance().addDressingRecord(record, new FirebaseRepository.SimpleCallback() {
+                @Override public void onSuccess() {
+                    dialog.dismiss();
+                    loadAndDisplayRecords();
+                }
+                @Override public void onFailure(Exception e) {
+                    Toast.makeText(DressingHistoryActivity.this,
+                            "서버 저장 실패 (로컬에만 저장됨)", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    loadAndDisplayRecords();
+                }
+            });
         });
 
         dialogView.findViewById(R.id.btnCancel).setOnClickListener(v -> dialog.dismiss());
-
         dialog.show();
+    }
+
+    private void scheduleDressingReminder() {
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(DressingReminderWorker.class)
+                .setInitialDelay(DressingSchedule.CYCLE_HOURS, TimeUnit.HOURS)
+                .build();
+        WorkManager.getInstance(this).enqueueUniqueWork(
+                "dressing_reminder",
+                ExistingWorkPolicy.REPLACE,
+                request);
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 100);
+            }
+        }
     }
 }

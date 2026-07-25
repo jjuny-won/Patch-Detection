@@ -3,6 +3,8 @@ package com.example.patch_detection_camera.ui;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.format.DateFormat;
+import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,7 +26,7 @@ public class ColorMarkerActivity extends AppCompatActivity {
         float[] refMarker = ReferenceStore.loadActiveReferenceRgb(this);
         float[] curMarker = getIntent().getFloatArrayExtra("rgb15");
 
-        // Reference Value (RGB15: Gray=0-2, Red=3-5, Green=6-8, Blue=9-11, White=12-14)
+        // Reference Value
         bindRgb(R.id.tvRefGray,  refMarker, 0);
         bindRgb(R.id.tvRefRed,   refMarker, 3);
         bindRgb(R.id.tvRefGreen, refMarker, 6);
@@ -38,17 +40,16 @@ public class ColorMarkerActivity extends AppCompatActivity {
         bindRgb(R.id.tvDetBlue,  curMarker, 9);
         bindRgb(R.id.tvDetWhite, curMarker, 12);
 
-        // Updated time
-        TextView tvTime = findViewById(R.id.tvUpdatedTime);
-        String formatted = DateFormat.format("MMM dd, yyyy hh:mm a", new Date()).toString();
-        tvTime.setText("Updated " + formatted);
+
+        // 보정 결과 카드
+        updateCalibCard();
 
         // Patch 칩 클릭 → Debug로 back
         findViewById(R.id.tvChip).setOnClickListener(v -> finish());
 
         // 하단 버튼
         findViewById(R.id.btnMonitoring).setOnClickListener(v ->
-                Toast.makeText(this, "준비 중", Toast.LENGTH_SHORT).show());
+                startActivity(new Intent(this, WoundMonitoringActivity.class)));
 
         findViewById(R.id.btnResult).setOnClickListener(v -> {
             Intent it = new Intent(this, ResultActivity.class);
@@ -61,6 +62,70 @@ public class ColorMarkerActivity extends AppCompatActivity {
             it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(it);
         });
+    }
+
+    private void updateCalibCard() {
+        String grade = getIntent().getStringExtra("grade");
+        if (grade == null) return; // 보정 데이터 없으면 카드 숨김
+
+        float improvementPct    = getIntent().getFloatExtra("improvementPct",    Float.NaN);
+        float exposureGain      = getIntent().getFloatExtra("exposureGain",      Float.NaN);
+        float beforeDeltaEMed   = getIntent().getFloatExtra("beforeDeltaEMedian", Float.NaN);
+        float afterDeltaEMed    = getIntent().getFloatExtra("afterDeltaEMedian",  Float.NaN);
+        float beforeDeltaEMax   = getIntent().getFloatExtra("beforeDeltaEMax",    Float.NaN);
+        float afterDeltaEMax    = getIntent().getFloatExtra("afterDeltaEMax",     Float.NaN);
+
+        LinearLayout card = findViewById(R.id.cardCalib);
+        card.setVisibility(View.VISIBLE);
+
+        // 등급 배지
+        TextView tvGrade = findViewById(R.id.tvCalibGrade);
+        tvGrade.setText(grade);
+        int badgeColor;
+        switch (grade) {
+            case "PASS": badgeColor = 0xFF44BB66; break;
+            case "WARN": badgeColor = 0xFFFF9922; break;
+            default:     badgeColor = 0xFFEE4444; break;
+        }
+        tvGrade.setBackgroundColor(badgeColor);
+        tvGrade.setTextColor(0xFFFFFFFF);
+
+        // ΔE 보정 전: "중앙값 X.X  최대 X.X"
+        TextView tvBefore = findViewById(R.id.tvDeltaEBefore);
+        if (Float.isFinite(beforeDeltaEMed)) {
+            tvBefore.setText(String.format(Locale.US, "중앙값 %.1f  최대 %.1f",
+                    beforeDeltaEMed, beforeDeltaEMax));
+        } else {
+            tvBefore.setText("N/A");
+        }
+
+        // ΔE 보정 후: "중앙값 X.X  최대 X.X"
+        TextView tvAfter = findViewById(R.id.tvDeltaEAfter);
+        if (Float.isFinite(afterDeltaEMed)) {
+            tvAfter.setText(String.format(Locale.US, "중앙값 %.1f  최대 %.1f",
+                    afterDeltaEMed, afterDeltaEMax));
+            // 기준선: PASS=초록, WARN=주황, FAIL=빨강
+            tvAfter.setTextColor(badgeColor);
+        } else {
+            tvAfter.setText("N/A");
+        }
+
+        // 개선율
+        TextView tvImp = findViewById(R.id.tvImprovement);
+        if (Float.isFinite(improvementPct)) {
+            tvImp.setText(String.format(Locale.US, "↑ %.1f%%", improvementPct));
+            tvImp.setTextColor(improvementPct >= 0 ? 0xFF44BB66 : 0xFFEE4444);
+        } else {
+            tvImp.setText("N/A");
+        }
+
+        // 노출 보정
+        TextView tvExp = findViewById(R.id.tvExposureGain);
+        if (Float.isFinite(exposureGain)) {
+            tvExp.setText(String.format(Locale.US, "× %.2f", exposureGain));
+        } else {
+            tvExp.setText("N/A");
+        }
     }
 
     private void bindRgb(int viewId, float[] arr, int offset) {

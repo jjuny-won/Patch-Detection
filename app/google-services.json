@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "403813818472",
+    "project_id": "patch-app-44b97",
+    "storage_bucket": "patch-app-44b97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:403813818472:android:743ce11a6ee945753ddbdd",
+        "android_client_info": {
+          "package_name": "com.example.patch_detection_camera"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4PQuloxwvPL_V0t7zsl3s-AS0HrvKbOU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
