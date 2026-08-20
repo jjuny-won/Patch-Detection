@@ -216,6 +216,98 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- 보정 결과 카드 -->
+            <LinearLayout
+                android:id="@+id/cardCalib"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_white_card"
+                android:padding="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
+
+                <!-- 헤더: 제목 + PASS/WARN/FAIL 배지 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="색상 보정 결과"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#3A5050"/>
+                    <TextView
+                        android:id="@+id/tvCalibGrade"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:background="@drawable/bg_rounded_white_button"/>
+                </LinearLayout>
+
+                <!-- ΔE 보정 전 -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:paddingTop="8dp" android:paddingBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="ΔE (보정 전)"
+                        android:textSize="14sp" android:textColor="#7A9090"/>
+                    <TextView android:id="@+id/tvDeltaEBefore"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="--" android:textSize="14sp" android:textColor="#5A7070"/>
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D0DEDE"/>
+
+                <!-- ΔE 보정 후 -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:paddingTop="8dp" android:paddingBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="ΔE (보정 후)"
+                        android:textSize="14sp" android:textColor="#7A9090"/>
+                    <TextView android:id="@+id/tvDeltaEAfter"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="--" android:textSize="14sp" android:textColor="#5A7070"/>
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D0DEDE"/>
+
+                <!-- 개선율 -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:paddingTop="8dp" android:paddingBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="개선율"
+                        android:textSize="14sp" android:textColor="#7A9090"/>
+                    <TextView android:id="@+id/tvImprovement"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="--" android:textSize="14sp" android:textStyle="bold"
+                        android:textColor="#44BB66"/>
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D0DEDE"/>
+
+                <!-- 노출 보정 -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:paddingTop="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="노출 보정"
+                        android:textSize="14sp" android:textColor="#7A9090"/>
+                    <TextView android:id="@+id/tvExposureGain"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="--" android:textSize="14sp" android:textColor="#5A7070"/>
+                </LinearLayout>
+
+            </LinearLayout>
+
         </LinearLayout>
     </ScrollView>
 
@@ -227,7 +319,7 @@
         android:orientation="horizontal"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

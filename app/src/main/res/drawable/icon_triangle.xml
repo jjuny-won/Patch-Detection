@@ -3,8 +3,8 @@
     android:height="56dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-    <!-- 실제 마커의 삼각형: 진파랑/네이비 -->
+
     <path
-        android:fillColor="#2B4A8B"
+        android:fillColor="#7f358b"
         android:pathData="M50,8 L92,88 L8,88 Z"/>
 </vector>

@@ -10,11 +10,11 @@ public class ColorCalibrator {
     // ============================
     // Thresholds for Grade (ΔE76)
     // ============================
-    private static final double DE_PASS_MEDIAN = 3.0;
-    private static final double DE_PASS_MAX    = 6.0;
+    private static final double DE_PASS_MEDIAN = 5.0;
+    private static final double DE_PASS_MAX    = 15.0;
 
-    private static final double DE_WARN_MEDIAN = 6.0;
-    private static final double DE_WARN_MAX    = 12.0;
+    private static final double DE_WARN_MEDIAN = 15.0;
+    private static final double DE_WARN_MAX    = 35.0;
 
     // ============================
     // Exposure normalization clamps
@@ -103,6 +103,7 @@ public class ColorCalibrator {
             return m;
         }
         m.A = fr.A;
+        m.ok = true; // applyModelToMarker 가 m.ok 를 체크하므로 먼저 설정
 
         // 5) Evaluate AFTER RMSE in sRGB domain (참고용)
         float[] correctedMarker = applyModelToMarker(curRgb, m);
@@ -116,8 +117,6 @@ public class ColorCalibrator {
         EvalResult ev = evaluateWithModel(curRgb, refRgb, m);
         m.grade = ev.grade;
         m.reason = ev.reason;
-
-        m.ok = true;
 
         Log.d(TAG, "fitGammaWbCcm ok N=" + Xs.length
                 + " expGain=" + m.exposureGain

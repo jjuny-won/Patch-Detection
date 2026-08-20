@@ -39,6 +39,7 @@
         android:paddingEnd="16dp"
         android:paddingTop="10dp"
         android:paddingBottom="20dp"
+        android:layout_marginBottom="60dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -48,14 +49,31 @@
             android:layout_width="0dp"
             android:layout_height="52dp"
             android:layout_weight="1"
-            android:layout_marginEnd="10dp"
-            android:text="Dressing History"
+            android:layout_marginEnd="8dp"
+            android:text="Dressing"
             android:textAllCaps="false"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#D4785A"
             app:backgroundTint="#FFFFFF"
             app:strokeColor="#D4785A"
+            app:strokeWidth="2dp"
+            app:cornerRadius="16dp"
+            app:elevation="2dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExportCsv"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Export CSV"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#3A6680"
+            app:backgroundTint="#FFFFFF"
+            app:strokeColor="#3A6680"
             app:strokeWidth="2dp"
             app:cornerRadius="16dp"
             app:elevation="2dp"/>
@@ -67,7 +85,7 @@
             android:layout_weight="1"
             android:text="Home"
             android:textAllCaps="false"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#5A7070"
             app:backgroundTint="#FFFFFF"
@@ -90,10 +108,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingTop="12dp"
-            android:paddingBottom="8dp">
+            android:paddingBottom="32dp">
 
             <!-- pH Card -->
             <LinearLayout
@@ -101,6 +121,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_result_row_ph"
                 android:orientation="vertical"
+                android:clipChildren="false"
                 android:padding="14dp"
                 android:layout_marginBottom="10dp">
 
@@ -116,7 +137,7 @@
                 <com.example.patch_detection_camera.ui.LineChartView
                     android:id="@+id/chartPh"
                     android:layout_width="match_parent"
-                    android:layout_height="80dp"/>
+                    android:layout_height="100dp"/>
             </LinearLayout>
 
             <!-- Temperature Card -->
@@ -125,6 +146,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_result_row_temp"
                 android:orientation="vertical"
+                android:clipChildren="false"
                 android:padding="14dp"
                 android:layout_marginBottom="10dp">
 
@@ -140,7 +162,7 @@
                 <com.example.patch_detection_camera.ui.LineChartView
                     android:id="@+id/chartTemp"
                     android:layout_width="match_parent"
-                    android:layout_height="80dp"/>
+                    android:layout_height="100dp"/>
             </LinearLayout>
 
             <!-- Uric Acid Card -->
@@ -149,6 +171,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_result_row_uric"
                 android:orientation="vertical"
+                android:clipChildren="false"
                 android:padding="14dp"
                 android:layout_marginBottom="10dp">
 
@@ -164,7 +187,7 @@
                 <com.example.patch_detection_camera.ui.LineChartView
                     android:id="@+id/chartUricAcid"
                     android:layout_width="match_parent"
-                    android:layout_height="80dp"/>
+                    android:layout_height="100dp"/>
             </LinearLayout>
 
             <!-- Glucose Card -->
@@ -173,7 +196,9 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_result_row_glucose"
                 android:orientation="vertical"
-                android:padding="14dp">
+                android:clipChildren="false"
+                android:padding="14dp"
+                android:layout_marginBottom="10dp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -187,7 +212,7 @@
                 <com.example.patch_detection_camera.ui.LineChartView
                     android:id="@+id/chartGlucose"
                     android:layout_width="match_parent"
-                    android:layout_height="80dp"/>
+                    android:layout_height="100dp"/>
             </LinearLayout>
 
         </LinearLayout>
