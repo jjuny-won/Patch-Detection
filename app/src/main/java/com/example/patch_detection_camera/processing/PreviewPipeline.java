@@ -912,12 +912,12 @@ public class PreviewPipeline {
             }
         }
 
-        // Fixed layout: TL=HEXAGON, TR=SQUARE, BL=TRIANGLE, BR=CIRCLE
+        // Fixed layout: TL=TRIANGLE (pH), TR=CIRCLE (Uric acid), BL=SQUARE (Temp), BR=HEXAGON (Glucose)
         ShapeDetector.ShapeType[] types = {
-                ShapeDetector.ShapeType.HEXAGON,
-                ShapeDetector.ShapeType.SQUARE,
                 ShapeDetector.ShapeType.TRIANGLE,
-                ShapeDetector.ShapeType.CIRCLE
+                ShapeDetector.ShapeType.CIRCLE,
+                ShapeDetector.ShapeType.SQUARE,
+                ShapeDetector.ShapeType.HEXAGON
         };
         // Each quadrant: [x0, y0, x1, y1] (pixel bounds, clamped below)
         double[][] quadBounds = {
@@ -1064,8 +1064,8 @@ public class PreviewPipeline {
 
     /**
      * Quadrant-based shape type constraint.
-     * Fixed patch layout:  TL=HEXAGON  TR=SQUARE
-     *                      BL=TRIANGLE BR=CIRCLE
+     * Fixed patch layout:  TL=TRIANGLE (pH)   TR=CIRCLE (Uric acid)
+     *                      BL=SQUARE (Temp)   BR=HEXAGON (Glucose)
      * Divider: strip.center.x (horizontal), disc centroid Y (vertical).
      * Matching type → score +0.15; non-matching → type overridden, score -0.10.
      */
@@ -1092,10 +1092,10 @@ public class PreviewPipeline {
             double cy = c.bbox.y + c.bbox.height / 2.0;
 
             ShapeDetector.ShapeType expected;
-            if      (cx < divX && cy < divY)  expected = ShapeDetector.ShapeType.HEXAGON;
-            else if (cx >= divX && cy < divY) expected = ShapeDetector.ShapeType.SQUARE;
-            else if (cx < divX && cy >= divY) expected = ShapeDetector.ShapeType.TRIANGLE;
-            else                              expected = ShapeDetector.ShapeType.CIRCLE;
+            if      (cx < divX && cy < divY)  expected = ShapeDetector.ShapeType.TRIANGLE;
+            else if (cx >= divX && cy < divY) expected = ShapeDetector.ShapeType.CIRCLE;
+            else if (cx < divX && cy >= divY) expected = ShapeDetector.ShapeType.SQUARE;
+            else                              expected = ShapeDetector.ShapeType.HEXAGON;
 
             if (c.type == expected) {
                 c.finalScore = Math.min(1.0, c.finalScore + 0.15);
