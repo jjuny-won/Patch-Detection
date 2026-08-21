@@ -66,7 +66,6 @@ public class DebugActivity extends AppCompatActivity {
 
         bindViews();
         bindButtons();
-        setUpdatedTime();
 
         shapesJsonStr = getIntent().getStringExtra("shapes_json");
         curMarker = getIntent().getFloatArrayExtra("rgb15");
@@ -146,7 +145,7 @@ public class DebugActivity extends AppCompatActivity {
         Button btnHome = findViewById(R.id.btnHome);
 
         btnMonitoring.setOnClickListener(v ->
-                Toast.makeText(this, "준비 중", Toast.LENGTH_SHORT).show());
+                startActivity(new Intent(this, WoundMonitoringActivity.class)));
 
         // "Result" 버튼 → ResultActivity로 back
         btnDebug.setOnClickListener(v -> finish());
@@ -161,14 +160,22 @@ public class DebugActivity extends AppCompatActivity {
         findViewById(R.id.tvChip).setOnClickListener(v -> {
             Intent it = new Intent(this, ColorMarkerActivity.class);
             it.putExtra("rgb15", curMarker);
+            if (fit != null && fit.ok) {
+                it.putExtra("grade", fit.grade);
+                it.putExtra("improvementPct", (float) fit.improvementPct);
+                it.putExtra("exposureGain", (float) fit.exposureGain);
+            }
+            if (eval != null) {
+                it.putExtra("beforeDeltaEMedian", (float) eval.beforeDeltaEMedian);
+                it.putExtra("afterDeltaEMedian",  (float) eval.afterDeltaEMedian);
+                it.putExtra("beforeDeltaEMax",    (float) eval.beforeDeltaEMax);
+                it.putExtra("afterDeltaEMax",     (float) eval.afterDeltaEMax);
+            }
             startActivity(it);
         });
     }
 
-    private void setUpdatedTime() {
-        String formatted = DateFormat.format("MMM dd, yyyy hh:mm a", new Date()).toString();
-        tvUpdatedTime.setText("Updated " + formatted);
-    }
+
 
     private void bindShapeCards() {
         setAllDefault();

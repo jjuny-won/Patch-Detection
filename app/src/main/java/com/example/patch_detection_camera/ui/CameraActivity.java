@@ -19,11 +19,16 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.Toast;
 
+import android.hardware.camera2.CaptureRequest;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.camera2.interop.Camera2CameraControl;
+import androidx.camera.camera2.interop.CaptureRequestOptions;
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
@@ -205,6 +210,8 @@ public class CameraActivity extends AppCompatActivity {
         viewBinding.viewFinder.post(() -> {
             setZoomRatioSafe(DEFAULT_ZOOM_RATIO);
 
+            // 프리뷰 중에는 AWB를 다시 auto/unlock 상태로 되돌려 씬에 맞게 수렴하게 둔다.
+            setAwbLock(false);
             lockAfAeToCenterOnce();
             setExposureCompensation(0);
 
@@ -214,7 +221,13 @@ public class CameraActivity extends AppCompatActivity {
     private void takePhoto() {
         if (imageCapture == null) return;
         applyCameraDefaults("before capture");
-        viewBinding.viewFinder.postDelayed(this::reallyTakePhoto, 400);
+        // 400ms 동안 AF/AE/AWB가 중앙 기준으로 수렴하도록 대기 후,
+        // 셔터 직전 AWB를 고정(lock)해서 촬영 순간의 화이트밸런스가
+        // 촬영 도중 다시 흔들리지 않도록 한다.
+        viewBinding.viewFinder.postDelayed(() -> {
+            setAwbLock(true);
+            viewBinding.viewFinder.postDelayed(this::reallyTakePhoto, 150);
+        }, 400);
     }
 
     @Override
@@ -270,6 +283,8 @@ public class CameraActivity extends AppCompatActivity {
 
                     @Override
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
+                        setAwbLock(false);
+
                         Uri savedUri = outputFileResults.getSavedUri();
                         if (savedUri == null) {
                             Toast.makeText(CameraActivity.this, "Saved URI is null", Toast.LENGTH_SHORT).show();
@@ -314,6 +329,7 @@ public class CameraActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(@NonNull androidx.camera.core.ImageCaptureException exception) {
+                        setAwbLock(false);
                         Log.e(TAG, "Photo capture failed", exception);
                         Toast.makeText(CameraActivity.this, "Capture failed", Toast.LENGTH_SHORT).show();
                     }
@@ -370,12 +386,33 @@ public class CameraActivity extends AppCompatActivity {
 
         FocusMeteringAction action = new FocusMeteringAction.Builder(
                 center,
-                FocusMeteringAction.FLAG_AF | FocusMeteringAction.FLAG_AE
+                FocusMeteringAction.FLAG_AF | FocusMeteringAction.FLAG_AE | FocusMeteringAction.FLAG_AWB
         )
                 .setAutoCancelDuration(2, TimeUnit.SECONDS)
                 .build();
 
         control.startFocusAndMetering(action);
+    }
+
+    /**
+     * AWB(자동 화이트밸런스)를 Camera2 CaptureRequest 레벨에서 직접 잠근다.
+     * FocusMeteringAction의 FLAG_AWB는 측광 영역만 지정할 뿐 실제로 값을 고정하지 않기 때문에,
+     * 촬영 순간 색온도가 계속 흔들리는 것을 막으려면 CONTROL_AWB_LOCK을 명시적으로 켜야 한다.
+     */
+    @ExperimentalCamera2Interop
+    private void setAwbLock(boolean locked) {
+        if (camera == null) return;
+        try {
+            Camera2CameraControl camera2Control = Camera2CameraControl.from(camera.getCameraControl());
+            CaptureRequestOptions options = new CaptureRequestOptions.Builder()
+                    .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
+                    .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, locked)
+                    .build();
+            camera2Control.addCaptureRequestOptions(options);
+            Log.d(TAG, "AWB lock=" + locked);
+        } catch (Exception e) {
+            Log.w(TAG, "setAwbLock failed", e);
+        }
     }
 
     private void setZoomRatioSafe(float zoomRatio) {

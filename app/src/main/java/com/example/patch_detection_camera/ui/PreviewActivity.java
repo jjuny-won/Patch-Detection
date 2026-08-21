@@ -301,6 +301,7 @@ public class PreviewActivity extends AppCompatActivity {
                 Log.d(TAG, "corrected_shapes_json=" + correctedShapesJson);
 
                 Intent intent = new Intent(this, ResultActivity.class);
+                intent.putExtra("image_uri", uriStr);
                 intent.putExtra("rgb15", rawRgb15);
                 intent.putExtra("correctedRgb15", correctedRgb15);
 

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -48,6 +49,15 @@ dependencies {
     implementation("org.opencv:opencv:4.9.0")
 
     implementation("com.google.guava:guava:33.4.8-android")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-storage")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime:2.9.1")
 
     // CameraX
     val cameraxVersion = "1.1.0-beta01"

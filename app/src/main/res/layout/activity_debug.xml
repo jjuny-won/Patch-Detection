@@ -16,33 +16,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+   \
     <TextView
         android:id="@+id/tvHeaderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
         android:text="Wound Status"
+        android:textColor="#FFFFFF"
         android:textSize="30sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        app:layout_constraintTop_toTopOf="@id/headerBg"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/tvUpdatedTime" />
-
-    <TextView
-        android:id="@+id/tvUpdatedTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="--"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:textColor="#DDEEFF"
-        android:layout_marginBottom="12dp"
-        app:layout_constraintBottom_toBottomOf="@id/headerBg"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="@id/headerBg" />
 
-    <!-- Color Marker 칩 (우측 정렬, 클릭 → ColorMarkerActivity) -->
     <TextView
         android:id="@+id/tvChip"
         android:layout_width="wrap_content"
@@ -101,7 +88,7 @@
                     <ImageView
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:src="@drawable/icon_circle"
+                        android:src="@drawable/icon_triangle"
                         android:scaleType="fitCenter"/>
                     <TextView
                         android:layout_width="wrap_content"
@@ -140,7 +127,7 @@
                             android:textStyle="bold"
                             android:textColor="#5B3FA0"/>
                         <TextView
-                            android:id="@+id/valueCircle"
+                            android:id="@+id/valueTriangle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="( 0, 0, 0 )"
@@ -167,7 +154,7 @@
                             android:textStyle="bold"
                             android:textColor="#5B3FA0"/>
                         <TextView
-                            android:id="@+id/valueCircleCorrected"
+                            android:id="@+id/valueTriangleCorrected"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="( 0, 0, 0 )"
@@ -271,100 +258,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Glucose 행 (white card) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_result_row_glucose"
-                android:padding="16dp"
-                android:layout_marginBottom="10dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginEnd="12dp">
-                    <ImageView
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:src="@drawable/icon_triangle"
-                        android:scaleType="fitCenter"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Glucose"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="#2D5E3C"
-                        android:layout_marginTop="4dp"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:background="@drawable/bg_value_pill"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="8dp">
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Color"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textColor="#2D5E3C"/>
-                        <TextView
-                            android:id="@+id/valueTriangle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="( 0, 0, 0 )"
-                            android:textSize="14sp"
-                            android:textColor="#2D5E3C"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:background="@drawable/bg_value_pill"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:gravity="center_vertical">
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Calibrated"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textColor="#2D5E3C"/>
-                        <TextView
-                            android:id="@+id/valueTriangleCorrected"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="( 0, 0, 0 )"
-                            android:textSize="14sp"
-                            android:textColor="#2D5E3C"/>
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-
             <!-- Uric acid 행 (light blue) -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -373,7 +266,7 @@
                 android:gravity="center_vertical"
                 android:background="@drawable/bg_result_row_uric"
                 android:padding="16dp"
-                android:layout_marginBottom="4dp">
+                android:layout_marginBottom="10dp">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -422,7 +315,7 @@
                             android:textStyle="bold"
                             android:textColor="#3A5580"/>
                         <TextView
-                            android:id="@+id/valueHexagon"
+                            android:id="@+id/valueCircle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="( 0, 0, 0 )"
@@ -449,12 +342,106 @@
                             android:textStyle="bold"
                             android:textColor="#3A5580"/>
                         <TextView
-                            android:id="@+id/valueHexagonCorrected"
+                            android:id="@+id/valueCircleCorrected"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="( 0, 0, 0 )"
                             android:textSize="14sp"
                             android:textColor="#3A5580"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Glucose 행 (white card) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_result_row_glucose"
+                android:padding="16dp"
+                android:layout_marginBottom="4dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="12dp">
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/icon_hexagon"
+                        android:scaleType="fitCenter"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Glucose"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#2D5E3C"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Color"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#2D5E3C"/>
+                        <TextView
+                            android:id="@+id/valueHexagon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#2D5E3C"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_value_pill"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Calibrated"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#2D5E3C"/>
+                        <TextView
+                            android:id="@+id/valueHexagonCorrected"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="( 0, 0, 0 )"
+                            android:textSize="14sp"
+                            android:textColor="#2D5E3C"/>
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
@@ -470,7 +457,7 @@
         android:orientation="horizontal"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
