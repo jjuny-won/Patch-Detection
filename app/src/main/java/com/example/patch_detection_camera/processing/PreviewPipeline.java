@@ -908,6 +908,12 @@ public class PreviewPipeline {
         }
     }
 
+    /**
+     * Quadrant-first detection:
+     * Fixed layout: TL=TRIANGLE (pH), TR=CIRCLE (Uric acid), BL=SQUARE (Temp), BR=HEXAGON (Glucose)
+     * For each quadrant pick the highest-finalScore candidate whose center lies in it.
+     * If none found, run inline rescue search inside that quadrant.
+     */
     private static List<ShapeGeometryClassifier.ShapeCandidate> selectOnePerQuadrant(
             List<ShapeGeometryClassifier.ShapeCandidate> allCandidates,
             Mat diskMask,
