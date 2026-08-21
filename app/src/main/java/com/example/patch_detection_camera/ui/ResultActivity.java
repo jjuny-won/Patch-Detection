@@ -138,8 +138,8 @@ public class ResultActivity extends AppCompatActivity {
                 int b = corrected ? o.optInt("corr_b", o.optInt("b", 0)) : o.optInt("b", 0);
                 float val = (r + g + b) / (3.0f * 255.0f);
                 switch (o.optString("type", "").toUpperCase(Locale.US)) {
-                    case "RECTANGLE": case "SQUARE": ph   = val; break;
-                    case "TRIANGLE":                 temp = val; break;
+                    case "TRIANGLE":                 ph   = val; break;
+                    case "RECTANGLE": case "SQUARE": temp = val; break;
                     case "CIRCLE":                   uric = val; break;
                     case "HEXAGON":                  gluc = val; break;
                 }
@@ -278,7 +278,7 @@ public class ResultActivity extends AppCompatActivity {
                 float norm = (sv.correctedR + sv.correctedG + sv.correctedB) / (3.0f * 255.0f);
 
                 switch (type) {
-                    case "RECTANGLE": case "SQUARE":
+                    case "TRIANGLE":
                         sv.sensorType    = "pH";
                         sv.numericValue  = 4.0f + norm * 6.0f;
                         sv.unit          = "pH";
@@ -286,7 +286,7 @@ public class ResultActivity extends AppCompatActivity {
                         sv.statusLabel   = phStatusLabel(sv.numericValue);
                         sv.predictedValue = String.format(Locale.US, "pH_%.1f", sv.numericValue);
                         break;
-                    case "TRIANGLE":
+                    case "RECTANGLE": case "SQUARE":
                         sv.sensorType    = "Temperature";
                         sv.numericValue  = 30.0f + norm * 12.0f;
                         sv.unit          = "°C";
