@@ -908,12 +908,6 @@ public class PreviewPipeline {
         }
     }
 
-    /**
-     * Quadrant-first detection:
-     * Fixed layout: TL=HEXAGON, TR=SQUARE, BL=TRIANGLE, BR=CIRCLE
-     * For each quadrant pick the highest-finalScore candidate whose center lies in it.
-     * If none found, run inline rescue search inside that quadrant.
-     */
     private static List<ShapeGeometryClassifier.ShapeCandidate> selectOnePerQuadrant(
             List<ShapeGeometryClassifier.ShapeCandidate> allCandidates,
             Mat diskMask,
@@ -936,10 +930,10 @@ public class PreviewPipeline {
         double divY = discCy;
 
         ShapeDetector.ShapeType[] types = {
-                ShapeDetector.ShapeType.HEXAGON,
-                ShapeDetector.ShapeType.SQUARE,
-                ShapeDetector.ShapeType.TRIANGLE,
-                ShapeDetector.ShapeType.CIRCLE
+                ShapeDetector.ShapeType.TRIANGLE,  // TL
+                ShapeDetector.ShapeType.CIRCLE,    // TR
+                ShapeDetector.ShapeType.SQUARE,    // BL
+                ShapeDetector.ShapeType.HEXAGON    // BR
         };
         double[][] quadBounds = {
                 {0,    0,    divX, divY},   // TL
@@ -1111,319 +1105,92 @@ public class PreviewPipeline {
         return result;
     }
 
-    /**
-     * For any quadrant whose expected shape type is absent from finalCandidates,
-     * runs an OTSU-based dark-region search inside that quadrant's ROI.
-     * This rescues shapes (e.g. the black textured square) that adaptive threshold
-     * mis-detects as a hollow ring with low rectangularity → UNKNOWN → dropped.
-     */
-    private static List<ShapeGeometryClassifier.ShapeCandidate> rescueMissingQuadrants(
-            Mat rgba,
-            List<ShapeGeometryClassifier.ShapeCandidate> candidates,
-            Mat diskMask,
-            RotatedRect strip,
-            Mat validMask) {
-
-        if (rgba == null || rgba.empty()) return candidates;
-        if (diskMask == null || diskMask.empty()) return candidates;
-
-        Moments mom = Imgproc.moments(diskMask);
-        if (mom.m00 < 1) return candidates;
-
-        final int W = rgba.cols();
-        final int H = rgba.rows();
-        double discCx = mom.m10 / mom.m00;
-        double discCy = mom.m01 / mom.m00;
-        double divX = (strip != null) ? strip.center.x : discCx;
-        double divY = discCy;
-
-        // Collect which types are already detected
-        Set<ShapeDetector.ShapeType> present = new HashSet<>();
-        for (ShapeGeometryClassifier.ShapeCandidate c : candidates) {
-            if (c != null && c.type != null && c.type != ShapeDetector.ShapeType.UNKNOWN) {
-                present.add(c.type);
-            }
+        /** Shift all contour points by (dx, dy). */
+        private static MatOfPoint shiftContour(MatOfPoint src, int dx, int dy) {
+            Point[] pts = src.toArray();
+            for (Point p : pts) { p.x += dx; p.y += dy; }
+            return new MatOfPoint(pts);
         }
 
-        // Fixed layout: TL=HEXAGON, TR=SQUARE, BL=TRIANGLE, BR=CIRCLE
-        ShapeDetector.ShapeType[] types = {
-                ShapeDetector.ShapeType.HEXAGON,
-                ShapeDetector.ShapeType.SQUARE,
-                ShapeDetector.ShapeType.TRIANGLE,
-                ShapeDetector.ShapeType.CIRCLE
-        };
-        // Each quadrant: [x0, y0, x1, y1] (pixel bounds, clamped below)
-        double[][] quadBounds = {
-                {0,    0,    divX, divY},   // TL
-                {divX, 0,    W,    divY},   // TR
-                {0,    divY, divX, H   },   // BL
-                {divX, divY, W,    H   }    // BR
-        };
 
-        Mat gray = new Mat();
-        Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY);
+        /** Returns center-based square sampling rect (70% of min dimension). */
+        private static Rect centerSampleRect(ShapeGeometryClassifier.ShapeCandidate c, int W, int H) {
+            int cx = (c.center != null) ? (int) Math.round(c.center.x) : c.bbox.x + c.bbox.width / 2;
+            int cy = (c.center != null) ? (int) Math.round(c.center.y) : c.bbox.y + c.bbox.height / 2;
+            int half = Math.max(4, (int) Math.round(Math.min(c.bbox.width, c.bbox.height) * 0.35));
+            return clampRect(new Rect(cx - half, cy - half, 2 * half, 2 * half), W, H);
+        }
 
-        boolean anyAdded = false;
+        /**
+         * Returns true when the contour's convex hull area is 30–85% of bbox area,
+         * indicating the contour is plausible and shape-conforming.
+         */
+        private static boolean isContourValid(ShapeGeometryClassifier.ShapeCandidate c) {
+            if (c.contour == null || c.contour.empty() || c.bbox == null) return false;
+            double bboxArea = (double) c.bbox.width * c.bbox.height;
+            if (bboxArea < 1) return false;
+            MatOfInt hullIdx = new MatOfInt();
+            Imgproc.convexHull(c.contour, hullIdx);
+            int[] idx = hullIdx.toArray();
+            hullIdx.release();
+            if (idx.length < 3) return false;
+            Point[] pts = c.contour.toArray();
+            MatOfPoint hullPts = new MatOfPoint();
+            Point[] hp = new Point[idx.length];
+            for (int i = 0; i < idx.length; i++) hp[i] = pts[idx[i]];
+            hullPts.fromArray(hp);
+            double hullArea = Imgproc.contourArea(hullPts);
+            hullPts.release();
+            double ratio = hullArea / bboxArea;
+            return ratio >= 0.30 && ratio <= 0.85;
+        }
 
-        for (int qi = 0; qi < 4; qi++) {
-            ShapeDetector.ShapeType expected = types[qi];
-            if (present.contains(expected)) continue;   // already found
+        private static void sampleCandidateColors(
+                Mat rgba,
+                List<ShapeGeometryClassifier.ShapeCandidate> candidates
+        ) {
+            if (rgba == null || rgba.empty() || candidates == null) return;
 
-            int qx = (int) Math.max(0, quadBounds[qi][0]);
-            int qy = (int) Math.max(0, quadBounds[qi][1]);
-            int qx2 = (int) Math.min(W, quadBounds[qi][2]);
-            int qy2 = (int) Math.min(H, quadBounds[qi][3]);
-            int qw = qx2 - qx;
-            int qh = qy2 - qy;
-            if (qw < 20 || qh < 20) continue;
+            for (ShapeGeometryClassifier.ShapeCandidate c : candidates) {
+                if (c == null || c.bbox == null) continue;
 
-            Rect quadRect = new Rect(qx, qy, qw, qh);
+                Rect r = clampRect(c.bbox, rgba.cols(), rgba.rows());
+                if (r.width <= 0 || r.height <= 0) continue;
 
-            // Extract gray ROI; compute disc mean brightness WITHIN validMask
-            Mat grayRoi = gray.submat(quadRect);
-            Mat quadGray = new Mat(qh, qw, CvType.CV_8UC1, new Scalar(0));
-            double discMean = 180.0; // fallback
+                Scalar mean;
 
-            if (validMask != null && !validMask.empty()) {
-                Mat vmRoi = validMask.submat(quadRect);
-                // Mean brightness of disc background pixels in this quadrant
-                Scalar meanSc = Core.mean(grayRoi, vmRoi);
-                discMean = (meanSc.val[0] > 10) ? meanSc.val[0] : 180.0;
-                grayRoi.copyTo(quadGray, vmRoi);
-                vmRoi.release();
-            } else {
-                grayRoi.copyTo(quadGray);
-                discMean = Core.mean(quadGray).val[0];
-            }
-            grayRoi.release();
-
-            // Threshold: shapes darker than 80 % of the disc background mean
-            // (avoids OTSU being confused by zero-padded outside-disc pixels)
-            double threshVal = discMean * 0.80;
-            Mat bin = new Mat();
-            Imgproc.threshold(quadGray, bin, threshVal, 255, Imgproc.THRESH_BINARY_INV);
-
-            // Morphological close to fill interior texture gaps
-            int mk = 7;
-            Mat kernel = Imgproc.getStructuringElement(
-                    Imgproc.MORPH_ELLIPSE, new Size(mk, mk));
-            Imgproc.morphologyEx(bin, bin, Imgproc.MORPH_CLOSE,
-                    kernel, new Point(-1, -1), 2);
-            kernel.release();
-
-            // Keep only pixels inside the disc
-            if (validMask != null && !validMask.empty()) {
-                Mat vmRoi = validMask.submat(quadRect);
-                Core.bitwise_and(bin, vmRoi, bin);
-                vmRoi.release();
-            }
-
-            // Find contours
-            List<MatOfPoint> contours = new ArrayList<>();
-            Mat hier = new Mat();
-            Imgproc.findContours(bin, contours, hier,
-                    Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-            hier.release();
-
-            double minArea = 0.003 * W * H;
-            double maxArea = 0.25  * W * H;
-
-            ShapeGeometryClassifier.ShapeCandidate best = null;
-            double bestArea = -1;
-
-            for (MatOfPoint c : contours) {
-                double area = Imgproc.contourArea(c);
-                if (area < minArea || area > maxArea) { c.release(); continue; }
-
-                Rect bbox = Imgproc.boundingRect(c);
-                if (bbox.width < 20 || bbox.height < 20) { c.release(); continue; }
-
-                // Translate contour coords from quadrant-local to full-image
-                MatOfPoint shifted = shiftContour(c, qx, qy);
-                Rect fullBbox = new Rect(bbox.x + qx, bbox.y + qy, bbox.width, bbox.height);
-
-                ShapeGeometryClassifier.ShapeCandidate cand =
-                        new ShapeGeometryClassifier.ShapeCandidate();
-                cand.type         = expected;
-                cand.contour      = shifted;
-                cand.bbox         = fullBbox;
-                cand.center       = new Point(
-                        fullBbox.x + fullBbox.width  / 2.0,
-                        fullBbox.y + fullBbox.height / 2.0);
-                cand.area         = area;
-                cand.contrastScore = 0.50;
-                cand.fillScore    = 0.00;
-                cand.geometryScore = 1.50;
-                cand.finalScore   = 0.50;
-                cand.source       = "quad_rescue";
-
-                if (area > bestArea) {
-                    if (best != null && best.contour != null) best.contour.release();
-                    best      = cand;
-                    bestArea  = area;
+                // convex hull 마스크 — drawShapeOutline과 동일한 기준
+                Mat mask = Mat.zeros(rgba.rows(), rgba.cols(), CvType.CV_8UC1);
+                MatOfPoint hullForMask = convexHullContour(c.contour);
+                if (hullForMask != null) {
+                    List<MatOfPoint> tmp = new ArrayList<>();
+                    tmp.add(hullForMask);
+                    Imgproc.fillPoly(mask, tmp, new Scalar(255));
+                    hullForMask.release();
                 } else {
-                    shifted.release();
-                    c.release();
+                    Imgproc.rectangle(mask, r, new Scalar(255), -1);
                 }
-            }
 
-            if (best != null) {
-                candidates.add(best);
-                anyAdded = true;
-                Log.d(TAG, String.format(Locale.US,
-                        "QuadRescue: added %s bbox=%s area=%.1f",
-                        expected, best.bbox.toString(), best.area));
-            }
+                int erodePx = Math.max(2, (int) Math.round(Math.min(r.width, r.height) * 0.08));
+                Mat kernel = Imgproc.getStructuringElement(
+                        Imgproc.MORPH_ELLIPSE,
+                        new Size(2 * erodePx + 1, 2 * erodePx + 1));
+                Imgproc.erode(mask, mask, kernel);
+                kernel.release();
 
-            // cleanup
-            for (MatOfPoint c : contours) {
-                try { c.release(); } catch (Exception ignored) {}
-            }
-            bin.release();
-            quadGray.release();
-        }
+                if (Core.countNonZero(mask) >= 9) {
+                    mean = Core.mean(rgba, mask);
+                } else {
+                    Rect inner = centerSampleRect(c, rgba.cols(), rgba.rows());
+                    Mat roi = rgba.submat(inner);
+                    mean = Core.mean(roi);
+                    roi.release();
+                }
+                mask.release();
 
-        gray.release();
-
-        return anyAdded ? dedupeFinal(candidates) : candidates;
-    }
-
-    /** Shift all contour points by (dx, dy). */
-    private static MatOfPoint shiftContour(MatOfPoint src, int dx, int dy) {
-        Point[] pts = src.toArray();
-        for (Point p : pts) { p.x += dx; p.y += dy; }
-        return new MatOfPoint(pts);
-    }
-
-    /**
-     * Quadrant-based shape type constraint.
-     * Fixed patch layout:  TL=HEXAGON  TR=SQUARE
-     *                      BL=TRIANGLE BR=CIRCLE
-     * Divider: strip.center.x (horizontal), disc centroid Y (vertical).
-     * Matching type → score +0.15; non-matching → type overridden, score -0.10.
-     */
-    private static List<ShapeGeometryClassifier.ShapeCandidate> applyQuadrantConstraint(
-            List<ShapeGeometryClassifier.ShapeCandidate> candidates,
-            Mat diskMask,
-            RotatedRect strip) {
-
-        if (candidates == null || candidates.isEmpty()) return candidates;
-        if (diskMask == null || diskMask.empty()) return candidates;
-
-        Moments mom = Imgproc.moments(diskMask);
-        if (mom.m00 < 1) return candidates;
-
-        double discCx = mom.m10 / mom.m00;
-        double discCy = mom.m01 / mom.m00;
-        double divX = (strip != null) ? strip.center.x : discCx;
-        double divY = discCy;
-
-        for (ShapeGeometryClassifier.ShapeCandidate c : candidates) {
-            if (c == null || c.bbox == null) continue;
-
-            double cx = c.bbox.x + c.bbox.width  / 2.0;
-            double cy = c.bbox.y + c.bbox.height / 2.0;
-
-            ShapeDetector.ShapeType expected;
-            if      (cx < divX && cy < divY)  expected = ShapeDetector.ShapeType.HEXAGON;
-            else if (cx >= divX && cy < divY) expected = ShapeDetector.ShapeType.SQUARE;
-            else if (cx < divX && cy >= divY) expected = ShapeDetector.ShapeType.TRIANGLE;
-            else                              expected = ShapeDetector.ShapeType.CIRCLE;
-
-            if (c.type == expected) {
-                c.finalScore = Math.min(1.0, c.finalScore + 0.15);
-                c.source = c.source + "|quad✓";
-            } else {
-                Log.d(TAG, String.format(Locale.US,
-                        "QuadConstraint: %s→%s at(%.0f,%.0f)",
-                        c.type, expected, cx, cy));
-                c.type = expected;
-                c.finalScore = Math.max(0.0, c.finalScore - 0.10);
-                c.source = c.source + "|quad✗→" + expected.name();
+                c.meanR = mean.val[0];
+                c.meanG = mean.val[1];
+                c.meanB = mean.val[2];
             }
         }
-
-        return dedupeFinal(candidates);
     }
-
-    /** Returns center-based square sampling rect (70% of min dimension). */
-    private static Rect centerSampleRect(ShapeGeometryClassifier.ShapeCandidate c, int W, int H) {
-        int cx = (c.center != null) ? (int) Math.round(c.center.x) : c.bbox.x + c.bbox.width / 2;
-        int cy = (c.center != null) ? (int) Math.round(c.center.y) : c.bbox.y + c.bbox.height / 2;
-        int half = Math.max(4, (int) Math.round(Math.min(c.bbox.width, c.bbox.height) * 0.35));
-        return clampRect(new Rect(cx - half, cy - half, 2 * half, 2 * half), W, H);
-    }
-
-    /**
-     * Returns true when the contour's convex hull area is 30–85% of bbox area,
-     * indicating the contour is plausible and shape-conforming.
-     */
-    private static boolean isContourValid(ShapeGeometryClassifier.ShapeCandidate c) {
-        if (c.contour == null || c.contour.empty() || c.bbox == null) return false;
-        double bboxArea = (double) c.bbox.width * c.bbox.height;
-        if (bboxArea < 1) return false;
-        MatOfInt hullIdx = new MatOfInt();
-        Imgproc.convexHull(c.contour, hullIdx);
-        int[] idx = hullIdx.toArray();
-        hullIdx.release();
-        if (idx.length < 3) return false;
-        Point[] pts = c.contour.toArray();
-        MatOfPoint hullPts = new MatOfPoint();
-        Point[] hp = new Point[idx.length];
-        for (int i = 0; i < idx.length; i++) hp[i] = pts[idx[i]];
-        hullPts.fromArray(hp);
-        double hullArea = Imgproc.contourArea(hullPts);
-        hullPts.release();
-        double ratio = hullArea / bboxArea;
-        return ratio >= 0.30 && ratio <= 0.85;
-    }
-
-    private static void sampleCandidateColors(
-            Mat rgba,
-            List<ShapeGeometryClassifier.ShapeCandidate> candidates
-    ) {
-        if (rgba == null || rgba.empty() || candidates == null) return;
-
-        for (ShapeGeometryClassifier.ShapeCandidate c : candidates) {
-            if (c == null || c.bbox == null) continue;
-
-            Rect r = clampRect(c.bbox, rgba.cols(), rgba.rows());
-            if (r.width <= 0 || r.height <= 0) continue;
-
-            Scalar mean;
-
-            // convex hull 마스크 — drawShapeOutline과 동일한 기준
-            Mat mask = Mat.zeros(rgba.rows(), rgba.cols(), CvType.CV_8UC1);
-            MatOfPoint hullForMask = convexHullContour(c.contour);
-            if (hullForMask != null) {
-                List<MatOfPoint> tmp = new ArrayList<>();
-                tmp.add(hullForMask);
-                Imgproc.fillPoly(mask, tmp, new Scalar(255));
-                hullForMask.release();
-            } else {
-                Imgproc.rectangle(mask, r, new Scalar(255), -1);
-            }
-
-            int erodePx = Math.max(2, (int) Math.round(Math.min(r.width, r.height) * 0.08));
-            Mat kernel = Imgproc.getStructuringElement(
-                    Imgproc.MORPH_ELLIPSE,
-                    new Size(2 * erodePx + 1, 2 * erodePx + 1));
-            Imgproc.erode(mask, mask, kernel);
-            kernel.release();
-
-            if (Core.countNonZero(mask) >= 9) {
-                mean = Core.mean(rgba, mask);
-            } else {
-                Rect inner = centerSampleRect(c, rgba.cols(), rgba.rows());
-                Mat roi = rgba.submat(inner);
-                mean = Core.mean(roi);
-                roi.release();
-            }
-            mask.release();
-
-            c.meanR = mean.val[0];
-            c.meanG = mean.val[1];
-            c.meanB = mean.val[2];
-        }
-    }
-}
