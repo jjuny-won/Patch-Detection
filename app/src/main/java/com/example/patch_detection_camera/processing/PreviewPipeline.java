@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public class PreviewPipeline {
@@ -783,6 +784,57 @@ public class PreviewPipeline {
         int w = Math.max(1, Math.min(r.width, W - x));
         int h = Math.max(1, Math.min(r.height, H - y));
         return new Rect(x, y, w, h);
+    }
+
+    /**
+     * Color Marker(색상 보정 스트립)의 GRAY/RED/GREEN/BLUE/WHITE 5개 밴드가
+     * 실제로 이미지의 어느 영역에서 샘플링됐는지 라벨/박스로 표시한 워프 이미지를 반환한다.
+     * 반환된 Mat의 해제 책임은 호출자에게 있다.
+     */
+    public static Mat renderColorMarkerRegions(Mat rgbaIn) {
+        if (rgbaIn == null || rgbaIn.empty()) return new Mat();
+
+        ColorMarkerExtractor.Result mr = ColorMarkerExtractor.extract(rgbaIn, null, false);
+        if (mr == null || mr.stripRBox == null) {
+            return rgbaIn.clone();
+        }
+
+        ColorStripSampler.StripSample ss =
+                ColorStripSampler.sampleFiveBands(rgbaIn, mr.stripRBox, 140, 420);
+        if (ss == null || ss.warped == null || ss.warped.empty()) {
+            return rgbaIn.clone();
+        }
+
+        Mat disp = ss.warped;
+        for (Map.Entry<ColorStripSampler.Band, Rect> e : ss.bandRects.entrySet()) {
+            ColorStripSampler.Band band = e.getKey();
+            Rect r = clampRect(e.getValue(), disp.cols(), disp.rows());
+            Scalar boxColor = colorForBand(band);
+
+            Imgproc.rectangle(disp, r, boxColor, 3);
+
+            Scalar rgb = ss.rgbMedian.get(band);
+            String label = (rgb != null)
+                    ? String.format(Locale.US, "%s (%.0f,%.0f,%.0f)", band.name(), rgb.val[0], rgb.val[1], rgb.val[2])
+                    : band.name();
+
+            Imgproc.putText(disp, label,
+                    new Point(Math.max(3, r.x + 6), Math.max(18, r.y + 22)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.55, boxColor, 2);
+        }
+
+        return disp;
+    }
+
+    private static Scalar colorForBand(ColorStripSampler.Band band) {
+        switch (band) {
+            case GRAY:  return new Scalar(200, 200, 200, 255);
+            case RED:   return new Scalar(255, 70, 70, 255);
+            case GREEN: return new Scalar(60, 220, 60, 255);
+            case BLUE:  return new Scalar(70, 130, 255, 255);
+            case WHITE: return new Scalar(255, 220, 0, 255);
+            default:    return new Scalar(0, 255, 0, 255);
+        }
     }
 
     private static Mat erodeMask(Mat src, int kSize, int iter) {

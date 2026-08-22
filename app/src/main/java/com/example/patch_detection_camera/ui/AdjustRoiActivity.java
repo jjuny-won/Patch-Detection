@@ -75,7 +75,12 @@ public class AdjustRoiActivity extends AppCompatActivity {
             }
 
 
-            Intent intent = new Intent(this, PreviewActivity.class);
+            // REFERENCE 모드에서는 도형 탐지가 필요 없으니 Color Marker
+            // 샘플링 화면으로 바로 넘어간다.
+            Class<?> nextActivity = "REFERENCE".equals(mode)
+                    ? ColorMarkerDebugActivity.class
+                    : PreviewActivity.class;
+            Intent intent = new Intent(this, nextActivity);
             intent.putExtra("image_uri", uriStr);
             if (source != null) intent.putExtra("source", source);
 

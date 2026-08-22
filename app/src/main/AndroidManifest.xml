@@ -33,6 +33,7 @@
         <activity android:name=".ui.DebugActivity" />
         <activity android:name=".ui.ReferenceListActivity"/>
         <activity android:name=".ui.ColorMarkerActivity"/>
+        <activity android:name=".ui.ColorMarkerDebugActivity"/>
         <activity android:name=".ui.ModeSelectActivity"
             android:exported="true">
             <intent-filter>

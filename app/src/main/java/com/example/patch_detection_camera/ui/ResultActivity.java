@@ -84,6 +84,11 @@ public class ResultActivity extends AppCompatActivity {
             Intent intent = new Intent(this, DebugActivity.class);
             intent.putExtra("rgb15",       getIntent().getFloatArrayExtra("rgb15"));
             intent.putExtra("shapes_json", shapesJson);
+            intent.putExtra("image_uri",   getIntent().getStringExtra("image_uri"));
+            intent.putExtra("roi_cx",      getIntent().getFloatExtra("roi_cx", -1f));
+            intent.putExtra("roi_cy",      getIntent().getFloatExtra("roi_cy", -1f));
+            intent.putExtra("roi_w",       getIntent().getFloatExtra("roi_w", -1f));
+            intent.putExtra("roi_h",       getIntent().getFloatExtra("roi_h", -1f));
             startActivity(intent);
         });
         findViewById(R.id.btnHome).setOnClickListener(v -> {

@@ -306,7 +306,12 @@ public class CameraActivity extends AppCompatActivity {
                             float rw = roiRect.width() / viewW;
                             float rh = roiRect.height() / viewH;
 
-                            Intent previewIntent = new Intent(CameraActivity.this, PreviewActivity.class);
+                            // REFERENCE 모드에서는 도형 탐지가 필요 없으니 Color Marker
+                            // 샘플링 화면으로 바로 넘어간다.
+                            Class<?> nextActivity = isReferenceMode
+                                    ? ColorMarkerDebugActivity.class
+                                    : PreviewActivity.class;
+                            Intent previewIntent = new Intent(CameraActivity.this, nextActivity);
                             previewIntent.putExtra("image_uri", savedUri.toString());
                             previewIntent.putExtra("source", "camera");
 
