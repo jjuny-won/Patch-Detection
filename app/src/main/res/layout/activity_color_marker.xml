@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="#D1DEDD">
 
-    <!-- 파란 곡선 헤더 -->
+
     <View
         android:id="@+id/headerBg"
         android:layout_width="0dp"
@@ -16,33 +16,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Patch 칩 (우측 정렬, 클릭 시 DebugActivity로 back) -->
+
     <TextView
         android:id="@+id/tvHeaderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
         android:text="Wound Status"
+        android:textColor="#FFFFFF"
         android:textSize="30sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        app:layout_constraintTop_toTopOf="@id/headerBg"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/tvUpdatedTime" />
-
-    <TextView
-        android:id="@+id/tvUpdatedTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="--"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:textColor="#DDEEFF"
-        android:layout_marginBottom="12dp"
-        app:layout_constraintBottom_toBottomOf="@id/headerBg"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="@id/headerBg" />
 
-    <!-- Patch 칩 (우측 정렬, 클릭 시 DebugActivity로 back) -->
     <TextView
         android:id="@+id/tvChip"
         android:layout_width="wrap_content"

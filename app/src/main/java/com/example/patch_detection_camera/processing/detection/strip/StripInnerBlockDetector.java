@@ -237,7 +237,7 @@ public class StripInnerBlockDetector {
 
     private static class CoreMeanResult {
         Scalar meanBgr;
-        Mat mask; // ROI 크기 (innerRect.size), debug=false면 null
+        Mat mask;
     }
 
     /**

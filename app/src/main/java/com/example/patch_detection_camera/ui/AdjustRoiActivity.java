@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.patch_detection_camera.databinding.ActivityAdjustRoiBinding;
+import com.example.patch_detection_camera.ml.BiomarkerClassifier;
 import com.example.patch_detection_camera.processing.ImageNormalizer;
 
 public class AdjustRoiActivity extends AppCompatActivity {

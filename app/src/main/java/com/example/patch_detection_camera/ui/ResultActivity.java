@@ -1,5 +1,6 @@
 package com.example.patch_detection_camera.ui;
 
+import com.example.patch_detection_camera.ml.BiomarkerClassifier;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -55,6 +56,9 @@ public class ResultActivity extends AppCompatActivity {
     private FrameLayout uricBarContainer;
     private View uricIndicator;
 
+    private String glucoseClassLabel;
+    private String phClassLabel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,6 +100,73 @@ public class ResultActivity extends AppCompatActivity {
             it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(it);
         });
+    }
+
+    private static double[] extractGlucoseFeatures(int r, int g, int b) {
+        double total = r + g + b;
+        double rRatio = total > 0 ? r / total : 0;
+        double gRatio = total > 0 ? g / total : 0;
+        double bRatio = total > 0 ? b / total : 0;
+        return new double[]{r, g, b, rRatio, gRatio, bRatio};
+    }
+
+    private static float glucoseClassToNorm(String label) {
+        switch (label) {
+            case "1mM":  return 1f / 20f;
+            case "5mM":  return 5f / 20f;
+            case "10mM": return 10f / 20f;
+            case "20mM": return 20f / 20f;
+            default:     return 0f;
+        }
+    }
+
+    private static String glucoseStatus(String label) {
+        switch (label) {
+            case "1mM":
+            case "5mM":
+                return "Normal";
+            case "10mM":
+            case "20mM":
+                return "Elevated";
+            default:
+                return "-";
+        }
+    }
+
+    private static String glucoseStatusLabelKo(String label) {
+        switch (label) {
+            case "1mM":
+            case "5mM":
+                return "정상";
+            case "10mM":
+            case "20mM":
+                return "상승";
+            default:
+                return "-";
+        }
+    }
+
+    private static String glucoseStatusCode(String label) {
+        switch (label) {
+            case "1mM":
+            case "5mM":
+                return "NORMAL";
+            case "10mM":
+            case "20mM":
+                return "ELEVATED";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    private static float glucoseMMToFloat(String label) {
+        switch (label) {
+            case "1mM":  return 1f;
+            case "5mM":  return 5f;
+            case "10mM": return 10f;
+            case "20mM": return 20f;
+            default:     return -1f;
+        }
     }
 
     private void bindViews() {
@@ -143,10 +214,19 @@ public class ResultActivity extends AppCompatActivity {
                 int b = corrected ? o.optInt("corr_b", o.optInt("b", 0)) : o.optInt("b", 0);
                 float val = (r + g + b) / (3.0f * 255.0f);
                 switch (o.optString("type", "").toUpperCase(Locale.US)) {
-                    case "TRIANGLE":                 ph   = val; break;
+                    case "TRIANGLE":
+                        double[] phFeatures = extractPhFeatures(r, g, b);
+                        phClassLabel = BiomarkerClassifier.predictPh(phFeatures);
+                        ph = phClassToNorm(phClassLabel);
+                        break;
                     case "RECTANGLE": case "SQUARE": temp = val; break;
                     case "CIRCLE":                   uric = val; break;
-                    case "HEXAGON":                  gluc = val; break;
+                    case "HEXAGON":
+                        double[] glucoseFeatures = extractGlucoseFeatures(r, g, b);
+                        glucoseClassLabel = BiomarkerClassifier.predictGlucose(glucoseFeatures);
+                        gluc = glucoseClassToNorm(glucoseClassLabel);
+                        Log.d("GlucoseRF", "R=" + r + " G=" + g + " B=" + b + " → " + glucoseClassLabel);
+                        break;
                 }
             }
         } catch (Exception e) {
@@ -159,9 +239,9 @@ public class ResultActivity extends AppCompatActivity {
     private void updateVisibleCards(float phNorm, float tempNorm, float uricNorm, float glucNorm) {
         // pH: 0~1 → pH 4~10
         if (phNorm >= 0) {
-            float ph = 4.0f + phNorm * 6.0f;
-            tvPhValue.setText(String.format(Locale.US, "%.1f", ph));
-            tvPhStatus.setText(phStatus(ph));
+            float phValue = phClassToValue(phClassLabel);
+            tvPhValue.setText(String.format(Locale.US, "%.1f", phValue));
+            tvPhStatus.setText(phStatus(phValue));
             positionIndicator(phBarContainer, phIndicator, phNorm);
         }
 
@@ -183,9 +263,8 @@ public class ResultActivity extends AppCompatActivity {
 
 // Glucose: 0~1 → 0~20 mmol/L
         if (glucNorm >= 0) {
-            float glucVal = glucNorm * 20.0f;
-            tvGlucoseValue.setText(String.format(Locale.US, "%.1f mmol/L", glucVal));
-            tvGlucoseStatus.setText(glucVal < 4.0f ? "Normal" : "Elevated");
+            tvGlucoseValue.setText(glucoseClassLabel);
+            tvGlucoseStatus.setText(glucoseStatus(glucoseClassLabel));
             positionIndicator(glucoseBarContainer, glucoseIndicator, glucNorm);
         }
     }
@@ -248,6 +327,31 @@ public class ResultActivity extends AppCompatActivity {
         }
     }
 
+    private static double[] extractPhFeatures(int r, int g, int b) {
+        double total = r + g + b;
+        double rRatio = total > 0 ? r / total : 0;
+        double gRatio = total > 0 ? g / total : 0;
+        double bRatio = total > 0 ? b / total : 0;
+        return new double[]{r, g, b, rRatio, gRatio, bRatio};
+    }
+
+    private static float phClassToValue(String label) {
+        switch (label) {
+            case "pH5": return 5f;
+            case "pH6": return 6f;
+            case "pH7": return 7f;
+            case "pH8": return 8f;
+            case "pH9": return 9f;
+            default:    return -1f;
+        }
+    }
+
+    private static float phClassToNorm(String label) {
+        float v = phClassToValue(label);
+        if (v < 0) return 0f;
+        return (v - 5f) / (9f - 5f); // pH 5~9 → 0~1
+    }
+
     private void saveToFirebase(String shapesJson, String correctedJson) {
         String displayJson = correctedJson != null ? correctedJson : shapesJson;
         if (displayJson == null) return;
@@ -284,11 +388,14 @@ public class ResultActivity extends AppCompatActivity {
 
                 switch (type) {
                     case "TRIANGLE":
-                        sv.sensorType    = "pH";
-                        sv.numericValue  = 4.0f + norm * 6.0f;
-                        sv.unit          = "pH";
-                        sv.statusCode    = phStatusCode(sv.numericValue);
-                        sv.statusLabel   = phStatusLabel(sv.numericValue);
+                        double[] phFeaturesFb = extractPhFeatures(sv.correctedR, sv.correctedG, sv.correctedB);
+                        String phLabelFb = BiomarkerClassifier.predictPh(phFeaturesFb);
+
+                        sv.sensorType     = "pH";
+                        sv.unit           = "pH";
+                        sv.numericValue   = phClassToValue(phLabelFb);
+                        sv.statusCode     = phStatusCode(sv.numericValue);
+                        sv.statusLabel    = phStatusLabel(sv.numericValue);
                         sv.predictedValue = String.format(Locale.US, "pH_%.1f", sv.numericValue);
                         break;
                     case "RECTANGLE": case "SQUARE":
@@ -308,12 +415,15 @@ public class ResultActivity extends AppCompatActivity {
                         sv.predictedValue = String.format(Locale.US, "%.0f μmol/L", sv.numericValue);
                         break;
                     case "HEXAGON":
-                        sv.sensorType    = "Glucose";
-                        sv.numericValue  = norm * 20.0f;
-                        sv.unit          = "mmol/L";
-                        sv.statusCode    = sv.numericValue < 4.0f ? "NORMAL" : "ELEVATED";
-                        sv.statusLabel   = sv.numericValue < 4.0f ? "정상" : "상승";
-                        sv.predictedValue = String.format(Locale.US, "%.1f mmol/L", sv.numericValue);
+                        double[] glucoseFeaturesFb = extractGlucoseFeatures(sv.correctedR, sv.correctedG, sv.correctedB);
+                        String glucoseLabelFb = BiomarkerClassifier.predictGlucose(glucoseFeaturesFb);
+
+                        sv.sensorType     = "Glucose";
+                        sv.unit           = "mM";
+                        sv.numericValue   = glucoseMMToFloat(glucoseLabelFb);
+                        sv.statusCode     = glucoseStatusCode(glucoseLabelFb);
+                        sv.statusLabel    = glucoseStatusLabelKo(glucoseLabelFb);
+                        sv.predictedValue = glucoseLabelFb;
                         break;
                     default:
                         continue;
