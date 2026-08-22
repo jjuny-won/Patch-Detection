@@ -1,11 +1,15 @@
 package com.example.patch_detection_camera.processing.detection.strip;
 
+import android.util.Log;
+
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.*;
 
 public class ColorStripSampler {
+
+    private static final String TAG = "ColorStripSampler";
 
     public enum Band { GRAY, RED, GREEN, BLUE, WHITE }
 
@@ -33,53 +37,64 @@ public class ColorStripSampler {
         Mat warped = warpByRotatedRect(rgba, rr, outW, outH);
         out.warped = warped;
 
-        // 2) warped에서 내부 margin 제외한 5개 band Rect 생성
-        List<Rect> bands = makeFiveVerticalBands(warped.cols(), warped.rows(), 0.10);
+        // 2) 실제 인쇄된 패치 경계(엣지/투영 분석)를 기준으로 5개 band Rect 생성
+        List<Rect> bands = detectBandRects(warped);
 
-        // 3) 각 band의 HSV mean + RGB median 계산
+        // 3) 각 band의 HSV mean + RGB median + 과다노출 비율 계산
         Scalar[] hsvMeans = new Scalar[5];
         Scalar[] rgbMeds  = new Scalar[5];
+        BandLabelMatcher.BandStat[] stats = new BandLabelMatcher.BandStat[5];
 
         for (int i = 0; i < 5; i++) {
             Rect br = bands.get(i);
 
             hsvMeans[i] = meanHSV(warped, br);
             rgbMeds[i]  = medianRGB(warped, br); // RGB 순서 Scalar(r,g,b)
+
+            BandLabelMatcher.BandStat st = new BandLabelMatcher.BandStat();
+            st.meanH = hsvMeans[i].val[0];
+            st.meanS = hsvMeans[i].val[1];
+            st.meanV = hsvMeans[i].val[2];
+            st.clippedRatio = clippedRatio(warped, br);
+            stats[i] = st;
         }
 
-        // 4) 자동 라벨링: White(최대 V), Gray(최소 S, white 제외), 나머지 3개는 Hue로 R/G/B
-        int whiteIdx = argmaxV(hsvMeans);
-        int grayIdx  = argminSExcept(hsvMeans, whiteIdx);
-
-        List<Integer> rest = new ArrayList<>();
-        for (int i = 0; i < 5; i++) if (i != whiteIdx && i != grayIdx) rest.add(i);
-
-        int rIdx = -1, gIdx = -1, bIdx = -1;
-        for (int idx : rest) {
-            double h = hsvMeans[idx].val[0]; // 0~180
-            double dR = Math.min(Math.abs(h - 0), Math.abs(h - 180));
-            double dG = Math.abs(h - 60);
-            double dB = Math.abs(h - 120);
-
-            if (dR <= dG && dR <= dB) rIdx = idx;
-            else if (dG <= dR && dG <= dB) gIdx = idx;
-            else bIdx = idx;
-        }
-
-        // 혹시 예외적으로 하나가 못 잡히면(색이 흐리거나), hue 기준으로 남은 것 재배치
-        if (rIdx < 0 || gIdx < 0 || bIdx < 0) {
-            int[] fallback = assignRGBByBestMatch(hsvMeans, rest);
-            rIdx = fallback[0]; gIdx = fallback[1]; bIdx = fallback[2];
-        }
+        // 4) 브루트포스 순열 매칭: 색상 비용 + 위치 비용(정순/역순)을 합산해 전역 최적 배정
+        BandLabelMatcher.MatchResult match = BandLabelMatcher.match(stats);
+        Log.d(TAG, "BandLabelMatcher cost=" + match.totalCost
+                + " reversed=" + match.usedReversedOrder
+                + " whiteGrayAmbiguous=" + match.whiteGrayAmbiguous);
 
         // 5) 결과 맵에 담기
-        put(out, Band.WHITE, whiteIdx, hsvMeans, rgbMeds, bands);
-        put(out, Band.GRAY,  grayIdx,  hsvMeans, rgbMeds, bands);
-        put(out, Band.RED,   rIdx,     hsvMeans, rgbMeds, bands);
-        put(out, Band.GREEN, gIdx,     hsvMeans, rgbMeds, bands);
-        put(out, Band.BLUE,  bIdx,     hsvMeans, rgbMeds, bands);
+        for (int bandIdx = 0; bandIdx < 5; bandIdx++) {
+            Band band = Band.valueOf(
+                    BandLabelMatcher.LABELS[match.bandToLabelIndex[bandIdx]].toUpperCase(Locale.US));
+            put(out, band, bandIdx, hsvMeans, rgbMeds, bands);
+        }
 
         return out;
+    }
+
+    // 밴드 내 R,G,B 모두 SATURATION_V_THRESHOLD를 초과하는(과다노출) 픽셀 비율
+    private static double clippedRatio(Mat rgba, Rect r) {
+        Mat sub = rgba.submat(r);
+        int step = Math.max(1, Math.min(r.width, r.height) / 30);
+
+        int total = 0, clipped = 0;
+        for (int yy = 0; yy < sub.rows(); yy += step) {
+            for (int xx = 0; xx < sub.cols(); xx += step) {
+                double[] px = sub.get(yy, xx); // RGBA
+                total++;
+                if (px[0] > BandLabelMatcher.SATURATION_V_THRESHOLD
+                        && px[1] > BandLabelMatcher.SATURATION_V_THRESHOLD
+                        && px[2] > BandLabelMatcher.SATURATION_V_THRESHOLD) {
+                    clipped++;
+                }
+            }
+        }
+
+        sub.release();
+        return total > 0 ? (double) clipped / total : 0.0;
     }
 
     // -------------------------
@@ -133,6 +148,41 @@ public class ColorStripSampler {
     // -------------------------
     // Band rects (5 vertical bands)
     // -------------------------
+
+    // StripInnerBlockDetector의 엣지/투영 기반 경계 검출로 5개 band의 샘플링 영역(innerRect)을
+    // 구한다. 검출이 불안정하면 StripInnerBlockDetector가 자체적으로 균등분할로 폴백하므로
+    // 여기서는 항상 5개 Rect가 반환된다고 가정하되, 방어적으로 실패 시에도 균등분할로 대체한다.
+    private static List<Rect> detectBandRects(Mat warped) {
+        StripInnerBlockDetector.Options opt = new StripInnerBlockDetector.Options();
+        opt.debug = false;
+        StripInnerBlockDetector.Result res = StripInnerBlockDetector.detectBands(warped, opt);
+
+        if (res == null || res.bands == null || res.bands.size() < 5) {
+            Log.d(TAG, "StripInnerBlockDetector failed, falling back to equal split");
+            return makeFiveVerticalBands(warped.cols(), warped.rows(), 0.10);
+        }
+
+        Log.d(TAG, "warped=" + warped.cols() + "x" + warped.rows()
+                + " stripInnerRect=" + res.stripInnerRect
+                + " cutsY=" + res.cutsY);
+
+        List<Rect> rects = new ArrayList<>(5);
+        for (int i = 0; i < res.bands.size(); i++) {
+            StripInnerBlockDetector.BandResult br = res.bands.get(i);
+            Log.d(TAG, "band" + i + " bandRect=" + br.bandRect + " innerRect=" + br.innerRect);
+            rects.add(clampRect(br.innerRect, warped.cols(), warped.rows()));
+        }
+        return rects;
+    }
+
+    private static Rect clampRect(Rect r, int W, int H) {
+        int x = Math.max(0, Math.min(r.x, W - 1));
+        int y = Math.max(0, Math.min(r.y, H - 1));
+        int w = Math.max(1, Math.min(r.width, W - x));
+        int h = Math.max(1, Math.min(r.height, H - y));
+        return new Rect(x, y, w, h);
+    }
+
     private static List<Rect> makeFiveVerticalBands(int W, int H, double marginFrac) {
         int mx = (int)Math.round(W * marginFrac);
         int my = (int)Math.round(H * marginFrac);
@@ -207,58 +257,6 @@ public class ColorStripSampler {
         int mid = arr.size() / 2;
         if (arr.size() % 2 == 1) return arr.get(mid);
         return (arr.get(mid - 1) + arr.get(mid)) / 2;
-    }
-
-    // -------------------------
-    // Labeling helpers
-    // -------------------------
-    private static int argmaxV(Scalar[] hsvMeans) {
-        int best = 0;
-        double bestV = hsvMeans[0].val[2];
-        for (int i = 1; i < hsvMeans.length; i++) {
-            if (hsvMeans[i].val[2] > bestV) { bestV = hsvMeans[i].val[2]; best = i; }
-        }
-        return best;
-    }
-
-    private static int argminSExcept(Scalar[] hsvMeans, int exceptIdx) {
-        int best = -1;
-        double bestS = 1e18;
-        for (int i = 0; i < hsvMeans.length; i++) {
-            if (i == exceptIdx) continue;
-            if (hsvMeans[i].val[1] < bestS) { bestS = hsvMeans[i].val[1]; best = i; }
-        }
-        return (best >= 0) ? best : 0;
-    }
-
-    // 혹시 R/G/B가 하나라도 못 잡히면, 3개 후보를 “최소 거리 매칭”으로 강제 할당
-    // return: [rIdx, gIdx, bIdx]
-    private static int[] assignRGBByBestMatch(Scalar[] hsvMeans, List<Integer> idxs) {
-        // 목표 hue: R=0(또는180), G=60, B=120
-        // 3개 후보에 대해 모든 permutation 비용 계산
-        int n = idxs.size();
-        if (n != 3) return new int[]{ idxs.get(0), idxs.get(Math.min(1,n-1)), idxs.get(Math.min(2,n-1)) };
-
-        int a = idxs.get(0), b = idxs.get(1), c = idxs.get(2);
-        int[][] perms = new int[][]{
-                {a,b,c},{a,c,b},{b,a,c},{b,c,a},{c,a,b},{c,b,a}
-        };
-
-        double bestCost = 1e18;
-        int[] best = perms[0];
-
-        for (int[] p : perms) {
-            double cost =
-                    hueDistToRed(hsvMeans[p[0]].val[0]) +
-                            Math.abs(hsvMeans[p[1]].val[0] - 60) +
-                            Math.abs(hsvMeans[p[2]].val[0] - 120);
-            if (cost < bestCost) { bestCost = cost; best = p; }
-        }
-        return new int[]{ best[0], best[1], best[2] };
-    }
-
-    private static double hueDistToRed(double h) {
-        return Math.min(Math.abs(h - 0), Math.abs(h - 180));
     }
 
     private static void put(StripSample out, Band band, int idx,

@@ -105,19 +105,14 @@ public class ReferenceCaptureActivity extends AppCompatActivity {
                     if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
 
                     boolean ok = result.getData().getBooleanExtra("ok", false);
+                    float[] rgb15 = result.getData().getFloatArrayExtra("rgb15");
 
-                    String uriStr = result.getData().getStringExtra("image_uri");
-                    if (uriStr == null) uriStr = result.getData().getStringExtra("imageUri");
-
-                    if (!ok || uriStr == null) {
-                        Toast.makeText(this, "촬영 결과가 없어요", Toast.LENGTH_SHORT).show();
-                        return;
+                    if (ok && rgb15 != null && rgb15.length >= 15) {
+                        samples.add(0, new ReferenceSample(rgb15));
+                        updateUi();
+                    } else {
+                        Toast.makeText(this, "샘플 저장 안함", Toast.LENGTH_SHORT).show();
                     }
-
-                    Intent it = new Intent(this, PreviewActivity.class);
-                    it.putExtra("image_uri", uriStr);
-                    it.putExtra("mode", "REFERENCE");
-                    flowLauncher.launch(it);
                 }
         );
 

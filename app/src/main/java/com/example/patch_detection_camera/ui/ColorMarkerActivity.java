@@ -47,6 +47,17 @@ public class ColorMarkerActivity extends AppCompatActivity {
         // Patch 칩 클릭 → Debug로 back
         findViewById(R.id.tvChip).setOnClickListener(v -> finish());
 
+        // 샘플링 영역 보기 → ColorMarkerDebugActivity
+        findViewById(R.id.btnViewRegions).setOnClickListener(v -> {
+            Intent it = new Intent(this, ColorMarkerDebugActivity.class);
+            it.putExtra("image_uri", getIntent().getStringExtra("image_uri"));
+            it.putExtra("roi_cx", getIntent().getFloatExtra("roi_cx", -1f));
+            it.putExtra("roi_cy", getIntent().getFloatExtra("roi_cy", -1f));
+            it.putExtra("roi_w",  getIntent().getFloatExtra("roi_w", -1f));
+            it.putExtra("roi_h",  getIntent().getFloatExtra("roi_h", -1f));
+            startActivity(it);
+        });
+
         // 하단 버튼
         findViewById(R.id.btnMonitoring).setOnClickListener(v ->
                 startActivity(new Intent(this, WoundMonitoringActivity.class)));

@@ -28,8 +28,6 @@ public class DebugActivity extends AppCompatActivity {
 
     private static final String TAG = "DebugActivity";
 
-    private TextView tvUpdatedTime;
-
     private TextView valueCircle;
     private TextView valueCircleCorrected;
 
@@ -124,8 +122,6 @@ public class DebugActivity extends AppCompatActivity {
     }
 
     private void bindViews() {
-        tvUpdatedTime = findViewById(R.id.tvUpdatedTime);
-
         valueCircle = findViewById(R.id.valueCircle);
         valueCircleCorrected = findViewById(R.id.valueCircleCorrected);
 
@@ -160,6 +156,11 @@ public class DebugActivity extends AppCompatActivity {
         findViewById(R.id.tvChip).setOnClickListener(v -> {
             Intent it = new Intent(this, ColorMarkerActivity.class);
             it.putExtra("rgb15", curMarker);
+            it.putExtra("image_uri", getIntent().getStringExtra("image_uri"));
+            it.putExtra("roi_cx", getIntent().getFloatExtra("roi_cx", -1f));
+            it.putExtra("roi_cy", getIntent().getFloatExtra("roi_cy", -1f));
+            it.putExtra("roi_w",  getIntent().getFloatExtra("roi_w", -1f));
+            it.putExtra("roi_h",  getIntent().getFloatExtra("roi_h", -1f));
             if (fit != null && fit.ok) {
                 it.putExtra("grade", fit.grade);
                 it.putExtra("improvementPct", (float) fit.improvementPct);

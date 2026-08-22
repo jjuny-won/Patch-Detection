@@ -302,6 +302,10 @@ public class PreviewActivity extends AppCompatActivity {
 
                 Intent intent = new Intent(this, ResultActivity.class);
                 intent.putExtra("image_uri", uriStr);
+                intent.putExtra("roi_cx", roiCx);
+                intent.putExtra("roi_cy", roiCy);
+                intent.putExtra("roi_w", roiW);
+                intent.putExtra("roi_h", roiH);
                 intent.putExtra("rgb15", rawRgb15);
                 intent.putExtra("correctedRgb15", correctedRgb15);
 

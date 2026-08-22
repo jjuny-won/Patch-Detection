@@ -43,7 +43,8 @@ public class StripInnerBlockDetector {
         public int peakWindow = 9;       // local max window
 
         // warpedInner 내에서 위/아래 일부 무시(프린트 영향)
-        public double ignoreTopRatio = 0.07;
+        // 비대칭(0.07/0.04)이었을 때 맨 위 밴드(GRAY)가 아래로 심하게 밀리는 문제가 있어 대칭으로 통일
+        public double ignoreTopRatio = 0.04;
         public double ignoreBotRatio = 0.04;
 
         // ----------------------- (C) band 내부 ROI(시각화/샘플링) -----------------------
@@ -236,7 +237,7 @@ public class StripInnerBlockDetector {
 
     private static class CoreMeanResult {
         Scalar meanBgr;
-        Mat mask; // ROI 크기 (innerRect.size), debug=false면 null
+        Mat mask;
     }
 
     /**
